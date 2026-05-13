@@ -7,12 +7,12 @@ export default function FormPreview({ lang, templateId, formData }) {
   if (!template) return null;
 
   return (
-    <div className="bg-white/[0.03] border border-white/8 rounded-2xl p-4 backdrop-blur-sm">
-      <h3 className="font-semibold text-sm text-slate-200 mb-3 flex items-center gap-2">
-        <span className="w-1.5 h-1.5 rounded-full bg-indigo-500" />
+    <div className="preview-card">
+      <div className="preview-title">
+        <span style={{width:8,height:8,borderRadius:'50%',background:'var(--accent)',flexShrink:0}} />
         {template.name}
-      </h3>
-      <div className="space-y-1.5">
+      </div>
+      <div>
         {template.fields.map((field) => {
           const value = formData[field.key];
           if (!value) return null;
@@ -22,9 +22,9 @@ export default function FormPreview({ lang, templateId, formData }) {
             displayValue = opt ? opt.label : value;
           }
           return (
-            <div key={field.key} className="flex text-xs py-0.5">
-              <span className="text-slate-500 w-2/5 flex-shrink-0">{t(lang, field.key)}</span>
-              <span className="text-slate-200 font-medium truncate">{displayValue}</span>
+            <div key={field.key} className="preview-row">
+              <span className="preview-key">{t(lang, field.key)}</span>
+              <span className="preview-val">{displayValue}</span>
             </div>
           );
         })}

@@ -6,21 +6,19 @@ import TemplateSelector from '@/components/TemplateSelector';
 import DynamicForm from '@/components/DynamicForm';
 
 const SEVEN_DAYS = 7 * 24 * 60 * 60 * 1000;
-
-function encodeBase64(str) {
-  return btoa(String.fromCharCode(...new TextEncoder().encode(str)));
-}
+const encodeBase64 = (s) => btoa(String.fromCharCode(...new TextEncoder().encode(s)));
 
 export default function HomePage() {
   const [lang, setLang] = useState('en');
   const [templateId, setTemplateId] = useState(null);
+  const [formData, setFormData] = useState({});
+  const [link, setLink] = useState('');
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     const saved = localStorage.getItem('cgsi-lang');
     if (saved) setLang(saved);
   }, []);
-  const [formData, setFormData] = useState({});
-  const [link, setLink] = useState('');
 
   const handleLangChange = useCallback((newLang) => {
     setLang(newLang);
@@ -32,34 +30,29 @@ export default function HomePage() {
   }, []);
 
   const generateLink = useCallback(() => {
-    const payload = {
-      t: templateId,
-      f: formData,
-      x: Date.now() + SEVEN_DAYS,
-    };
-    const json = JSON.stringify(payload);
-    const base64 = encodeBase64(json);
-    const url = `${window.location.origin}/sign?d=${encodeURIComponent(base64)}`;
-    setLink(url);
+    const payload = { t: templateId, f: formData, x: Date.now() + SEVEN_DAYS };
+    const base64 = encodeBase64(JSON.stringify(payload));
+    setLink(`${window.location.origin}/sign?d=${encodeURIComponent(base64)}`);
   }, [templateId, formData]);
 
   const copyLink = useCallback(() => {
-    if (navigator.clipboard) {
-      navigator.clipboard.writeText(link);
-    }
+    if (!navigator.clipboard) return;
+    navigator.clipboard.writeText(link).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
   }, [link]);
 
   return (
-    <main className="min-h-screen bg-[#0a0e17]">
-      {/* Subtle background gradient */}
-      <div className="fixed inset-0 bg-gradient-to-br from-indigo-500/3 via-transparent to-emerald-500/3 pointer-events-none" />
+    <main style={{minHeight:'100vh',background:'var(--bg)'}}>
+      <div className="bg-glow" />
+      <div className="page-container">
 
-      <div className="relative max-w-lg mx-auto px-4 py-8">
         {/* Header */}
-        <div className="flex justify-between items-center mb-8">
+        <div className="flex-between mb-6">
           <div>
-            <h1 className="text-xl font-bold text-white tracking-tight">{t(lang, 'appTitle')}</h1>
-            <p className="text-xs text-slate-500 mt-1">Digital Form System</p>
+            <h1 className="text-h1">{t(lang, 'appTitle')}</h1>
+            <p style={{fontSize:12,color:'var(--text-muted)',marginTop:2}}>Digital Form System</p>
           </div>
           <LanguageSwitcher lang={lang} onLangChange={handleLangChange} />
         </div>
@@ -70,55 +63,63 @@ export default function HomePage() {
 
             {templateId && (
               <>
-                <DynamicForm
-                  lang={lang}
-                  templateId={templateId}
-                  formData={formData}
-                  onChange={handleFieldChange}
-                />
-                <button
-                  onClick={generateLink}
-                  className="w-full mt-8 py-4 bg-indigo-500 text-white font-semibold rounded-2xl text-sm hover:bg-indigo-400 active:scale-[0.98] transition-all duration-200 shadow-lg shadow-indigo-500/20 hover:shadow-indigo-500/30"
-                >
+                <DynamicForm lang={lang} templateId={templateId} formData={formData} onChange={handleFieldChange} />
+                <button onClick={generateLink} className="btn-primary mt-8">
+                  <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m13.35-.622l1.757-1.757a4.5 4.5 0 00-6.364-6.364l-4.5 4.5a4.5 4.5 0 001.242 7.244" />
+                  </svg>
                   {t(lang, 'generateLink')}
                 </button>
               </>
             )}
           </>
         ) : (
-          <div className="animate-scale mt-4 bg-white/[0.03] border border-white/8 rounded-2xl p-8 text-center backdrop-blur-sm">
-            <div className="w-16 h-16 bg-emerald-500/10 rounded-2xl flex items-center justify-center mx-auto mb-5 ring-1 ring-emerald-500/20">
-              <svg className="w-8 h-8 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m13.35-.622l1.757-1.757a4.5 4.5 0 00-6.364-6.364l-4.5 4.5a4.5 4.5 0 001.242 7.244" />
-              </svg>
+          <div className="animate-scale">
+            <div className="card-highlight" style={{textAlign:'center'}}>
+              <div className="success-circle" style={{marginBottom:20}}>
+                <svg width="34" height="34" fill="none" viewBox="0 0 24 24" stroke="var(--success)" strokeWidth="1.5">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m13.35-.622l1.757-1.757a4.5 4.5 0 00-6.364-6.364l-4.5 4.5a4.5 4.5 0 001.242 7.244" />
+                </svg>
+              </div>
+              <h2 className="text-h2" style={{marginBottom:4}}>{t(lang, 'linkReady')}</h2>
+              <p className="text-caption" style={{marginBottom:16}}>{t(lang, 'sendToClient')}</p>
+
+              <div className={`link-box${copied ? ' link-copied' : ''}`} style={{marginBottom:12}}>
+                {link}
+              </div>
+
+              <button onClick={copyLink} className={`btn-${copied ? 'primary' : 'secondary'}`}>
+                {copied ? (
+                  <>
+                    <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                    </svg>
+                    Copied!
+                  </>
+                ) : (
+                  <>
+                    <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M15.666 3.888A2.25 2.25 0 0013.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0c.055.194.084.4.084.612v0a.75.75 0 01-.75.75H9a.75.75 0 01-.75-.75v0c0-.212.03-.418.084-.612m7.332 0c.646.049 1.288.11 1.927.184 1.1.128 1.907 1.077 1.907 2.185V19.5a2.25 2.25 0 01-2.25 2.25H6.75A2.25 2.25 0 014.5 19.5V6.257c0-1.108.806-2.057 1.907-2.185a48.208 48.208 0 011.927-.184" />
+                    </svg>
+                    {t(lang, 'copyLink')}
+                  </>
+                )}
+              </button>
+
+              <div className="badge-warning" style={{marginTop:14,marginLeft:'auto',marginRight:'auto',width:'fit-content'}}>
+                <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                {t(lang, 'linkExpires')}
+              </div>
+
+              <button
+                onClick={() => { setLink(''); setTemplateId(null); setFormData({}); }}
+                style={{marginTop:18,background:'none',border:'none',color:'var(--text-muted)',fontSize:13,fontWeight:500,cursor:'pointer',fontFamily:'var(--font)'}}
+              >
+                ← {t(lang, 'backToHome')}
+              </button>
             </div>
-            <h2 className="text-lg font-bold text-white mb-2">{t(lang, 'linkReady')}</h2>
-            <p className="text-xs text-slate-500 mb-4">{t(lang, 'sendToClient')}</p>
-
-            <div className="bg-white/[0.04] border border-white/8 rounded-xl p-3 mb-4">
-              <p className="text-xs text-slate-300 break-all select-all leading-relaxed">{link}</p>
-            </div>
-
-            <button
-              onClick={copyLink}
-              className="w-full py-3.5 bg-white/10 text-white font-semibold rounded-xl text-sm hover:bg-white/15 active:scale-[0.98] transition-all duration-200 mb-3 border border-white/5"
-            >
-              {t(lang, 'copyLink')}
-            </button>
-
-            <div className="flex items-center justify-center gap-1.5 text-xs text-amber-400/80">
-              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              {t(lang, 'linkExpires')}
-            </div>
-
-            <button
-              onClick={() => { setLink(''); setTemplateId(null); setFormData({}); }}
-              className="mt-6 text-sm text-slate-500 hover:text-slate-300 transition-colors font-medium"
-            >
-              ← {t(lang, 'backToHome')}
-            </button>
           </div>
         )}
       </div>

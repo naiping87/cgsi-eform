@@ -56,18 +56,14 @@ export default function SignaturePad({ onSignatureChange, label, t }) {
 
   return (
     <div>
-      <div className="flex justify-between items-center mb-2">
-        <span className="text-xs font-medium text-slate-400">{label}</span>
-        <button onClick={clear} className="text-xs font-medium text-rose-400 hover:text-rose-300 transition-colors">
-          {t('clearSignature')}
-        </button>
+      <div className="sig-header">
+        <span className="sig-label">{label}</span>
+        <button onClick={clear} className="sig-clear">{t('clearSignature')}</button>
       </div>
-      <div className="border border-white/10 rounded-xl overflow-hidden bg-slate-100 ring-1 ring-white/5">
-        <canvas ref={canvasRef} className="w-full touch-none" />
+      <div className="sig-container">
+        <canvas ref={canvasRef} className="w-full" style={{touchAction:'none',width:'100%'}} />
       </div>
-      <p className="text-xs text-slate-500 mt-2 text-center">
-        ✍️ {t('signHere')}
-      </p>
+      <p className="sig-hint">{t('signHere')}</p>
     </div>
   );
 }

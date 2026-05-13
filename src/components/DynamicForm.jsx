@@ -7,15 +7,13 @@ export default function DynamicForm({ lang, templateId, formData, onChange }) {
   if (!template) return null;
 
   return (
-    <div className="mt-6">
-      <p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-slate-500 mb-1">
-        {t(lang, 'step2')}
-      </p>
-      <p className="text-xs text-slate-500 mb-4">{t(lang, 'fillInfo')}</p>
+    <div style={{marginTop:28}}>
+      <p className="text-subtitle" style={{marginBottom:4}}>{t(lang, 'step2')}</p>
+      <p className="text-caption" style={{marginBottom:16}}>{t(lang, 'fillInfo')}</p>
       <div className="space-y-3">
         {template.fields.map((field) => (
           <div key={field.key}>
-            <label className="block text-xs font-medium text-slate-400 mb-1.5 ml-1">
+            <label className="text-label" style={{display:'block',marginBottom:6,marginLeft:2}}>
               {t(lang, field.key)}
             </label>
             {field.type === 'select' ? (
@@ -33,7 +31,6 @@ export default function DynamicForm({ lang, templateId, formData, onChange }) {
                 value={formData[field.key] || ''}
                 onChange={(e) => onChange(field.key, e.target.value)}
                 rows={3}
-                className="resize-none"
               />
             ) : (
               <input
