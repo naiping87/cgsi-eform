@@ -25,7 +25,8 @@ function getDisplayValue(templateId, key, value) {
   return value;
 }
 
-export async function generatePDF(templateId, formData, signatureBuffers, overrides = {}) {
+export async function generatePDF(templateId, formData, signatureBuffers, options = {}) {
+  const { overrides = {}, positions = {} } = options;
   const pdfPath = path.join(FORMS_DIR, PDF_FILES[templateId]);
   const pdfBytes = fs.readFileSync(pdfPath);
 
@@ -54,13 +55,21 @@ export async function generatePDF(templateId, formData, signatureBuffers, overri
     for (const [key, pos] of Object.entries(coord.fields)) {
       const value = formData[key];
       if (!value) continue;
-      const page = pages[pos.page];
       const displayValue = getDisplayValue(templateId, key, value);
+
+      // Priority: user-clicked positions > calibration overrides > default coordinates
+      const p = positions[key] || {};
       const o = overrides[key] || {};
+      const x = p.x ?? o.x ?? pos.x;
+      const y = p.y ?? o.y ?? pos.y;
+      const sz = o.size ?? pos.size ?? 10;
+      const pageIdx = p.page ?? pos.page;
+      const page = pages[pageIdx];
+      if (!page) continue;
+
       page.drawText(displayValue, {
-        x: o.x ?? pos.x,
-        y: o.y ?? pos.y,
-        size: o.size ?? pos.size ?? 10,
+        x, y,
+        size: sz,
         font,
         color: rgb(0, 0, 0),
         maxWidth: o.maxWidth ?? pos.maxWidth ?? 400,

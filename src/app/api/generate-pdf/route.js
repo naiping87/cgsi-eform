@@ -5,7 +5,7 @@ import { sendPDFByEmail } from '@/lib/mailer';
 export async function POST(request) {
   try {
     const body = await request.json();
-    const { templateId, formData, signatures, overrides } = body;
+    const { templateId, formData, signatures, overrides, positions } = body;
 
     if (!templateId || !formData) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
@@ -18,7 +18,7 @@ export async function POST(request) {
       return Buffer.from(base64, 'base64');
     }).filter(Boolean);
 
-    const pdfBuffer = await generatePDF(templateId, formData, sigBuffers, overrides || {});
+    const pdfBuffer = await generatePDF(templateId, formData, sigBuffers, { overrides: overrides || {}, positions: positions || {} });
     const filename = getPDFFilename(templateId, formData);
 
     // Send email

@@ -132,7 +132,11 @@ export default function HomePage() {
               <>
                 <DynamicForm lang={lang} templateId={templateId} formData={formData} onChange={handleFieldChange} />
 
-                <div style={{display:'flex',gap:10,marginTop:28}}>
+                <a href={`/fill?t=${templateId}`} className="btn-secondary" style={{textDecoration:'none',marginBottom:10,marginTop:28}}>
+                  Fill PDF Visually (Click-to-Place)
+                </a>
+
+                <div style={{display:'flex',gap:10}}>
                   <button onClick={previewPDF} disabled={previewing} className="btn-secondary" style={{flex:1}}>
                     {previewing ? (
                       <><div className="spinner" /> Previewing...</>
