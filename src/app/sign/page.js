@@ -1,11 +1,16 @@
 'use client';
 import { useState, useEffect, useCallback, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
+import dynamic from 'next/dynamic';
 import { t } from '@/lib/i18n';
 import { getTemplate } from '@/lib/templates';
 import LanguageSwitcher from '@/components/LanguageSwitcher';
 import FormPreview from '@/components/FormPreview';
-import SignaturePad from '@/components/SignaturePad';
+
+const SignaturePad = dynamic(() => import('@/components/SignaturePad'), {
+  ssr: false,
+  loading: () => <div className="border-2 border-dashed border-gray-300 rounded-xl overflow-hidden bg-white h-40 flex items-center justify-center"><p className="text-gray-400 text-sm">Loading signature pad...</p></div>,
+});
 
 function SignPageContent() {
   const searchParams = useSearchParams();
