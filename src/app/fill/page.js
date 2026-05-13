@@ -15,7 +15,7 @@ let _pdfjs = null;
 async function loadPdfjs() {
   if (_pdfjs) return _pdfjs;
   const pdfjs = await import('pdfjs-dist');
-  pdfjs.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.0.379/pdf.worker.min.js`;
+  pdfjs.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs';
   _pdfjs = pdfjs;
   return pdfjs;
 }
