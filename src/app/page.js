@@ -138,18 +138,6 @@ export default function HomePage() {
                     )}
                   </div>
 
-                  {uploaded && uploaded.sigPositions && uploaded.sigPositions.length > 0 && (
-                    <div className="card" style={{marginBottom:12,padding:12}}>
-                      <p style={{fontSize:11,fontWeight:600,color:'var(--text-secondary)',marginBottom:4}}>
-                        Signature Detection
-                      </p>
-                      {uploaded.sigPositions.map((ref, i) => (
-                        <div key={i} style={{fontSize:10,color:'var(--text-muted)',marginBottom:2}}>
-                          Sig {i + 1}: detected at ({ref.x}, {ref.y}) page {ref.page} — anchor: {ref.anchor}
-                        </div>
-                      ))}
-                    </div>
-                  )}
                 </div>
 
                 <button
