@@ -63,7 +63,9 @@ export default function HomePage() {
       t: templateId,
       sigCount: uploaded.sigCount,
       s: sigOffsets,
-      b: uploaded.base64,
+      pdfId: uploaded.id,
+      // base64 fallback in case /tmp isn't available
+      b: uploaded.base64 && uploaded.base64.length < 50000 ? uploaded.base64 : '',
       x: Date.now() + SEVEN_DAYS,
     };
     const base64 = encodeBase64(JSON.stringify(payload));

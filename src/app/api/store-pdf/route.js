@@ -2,16 +2,14 @@ import { NextResponse } from 'next/server';
 import { getTemplate } from '@/lib/templates';
 import { SIGNATURE_ANCHORS } from '@/lib/coordinates';
 import { findSignaturePosition } from '@/lib/pdf-search';
+import fs from 'fs';
+import path from 'path';
+import os from 'os';
 
-// In-memory PDF store
-const store = new Map();
+const TMP_DIR = path.join(os.tmpdir(), 'cgsi-pdfs');
 
-setInterval(() => {
-  const now = Date.now();
-  for (const [id, entry] of store) {
-    if (entry.expires < now) store.delete(id);
-  }
-}, 10 * 60 * 1000);
+// Ensure tmp dir exists
+if (!fs.existsSync(TMP_DIR)) fs.mkdirSync(TMP_DIR, { recursive: true });
 
 export async function POST(request) {
   try {
@@ -31,14 +29,11 @@ export async function POST(request) {
     const buffer = Buffer.from(await file.arrayBuffer());
     const id = 'pdf_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
 
-    store.set(id, {
-      buffer,
-      templateId,
-      filename: file.name || 'form.pdf',
-      expires: Date.now() + 24 * 60 * 60 * 1000,
-    });
+    // Save to /tmp (persists within Vercel instance)
+    const filePath = path.join(TMP_DIR, id + '.pdf');
+    fs.writeFileSync(filePath, buffer);
 
-    // Detect signature positions from the uploaded PDF
+    // Detect signature positions
     const anchorConfigs = SIGNATURE_ANCHORS[templateId] || [];
     const sigPositions = [];
 
@@ -56,7 +51,7 @@ export async function POST(request) {
       }
     }
 
-    console.log(`Stored PDF ${id}, sig positions:`, sigPositions);
+    console.log(`Stored PDF ${id} at ${filePath}, sig positions:`, sigPositions);
 
     return NextResponse.json({
       success: true,
@@ -70,14 +65,14 @@ export async function POST(request) {
   }
 }
 
-export async function GET(request) {
-  const { searchParams } = new URL(request.url);
-  const id = searchParams.get('id');
-  if (!id || !store.has(id)) {
-    return NextResponse.json({ error: 'PDF not found' }, { status: 404 });
-  }
-  const entry = store.get(id);
-  return NextResponse.json({ found: true, templateId: entry.templateId, filename: entry.filename });
+export function getPdfPath(id) {
+  return path.join(TMP_DIR, id + '.pdf');
 }
 
-export { store };
+export function pdfExists(id) {
+  return fs.existsSync(getPdfPath(id));
+}
+
+export function readPdf(id) {
+  return fs.readFileSync(getPdfPath(id));
+}
