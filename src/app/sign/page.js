@@ -26,6 +26,11 @@ function SignPageContent() {
   const encoded = searchParams.get('d');
 
   const [lang, setLang] = useState('en');
+
+  useEffect(() => {
+    const saved = localStorage.getItem('cgsi-lang');
+    if (saved) setLang(saved);
+  }, []);
   const [data, setData] = useState(null);
   const [expired, setExpired] = useState(false);
   const [error, setError] = useState(false);

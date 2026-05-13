@@ -1,5 +1,5 @@
 'use client';
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { t } from '@/lib/i18n';
 import LanguageSwitcher from '@/components/LanguageSwitcher';
 import TemplateSelector from '@/components/TemplateSelector';
@@ -12,11 +12,13 @@ function encodeBase64(str) {
 }
 
 export default function HomePage() {
-  const [lang, setLang] = useState(() => {
-    if (typeof window !== 'undefined') return localStorage.getItem('cgsi-lang') || 'en';
-    return 'en';
-  });
+  const [lang, setLang] = useState('en');
   const [templateId, setTemplateId] = useState(null);
+
+  useEffect(() => {
+    const saved = localStorage.getItem('cgsi-lang');
+    if (saved) setLang(saved);
+  }, []);
   const [formData, setFormData] = useState({});
   const [link, setLink] = useState('');
 

@@ -1,11 +1,16 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { t } from '@/lib/i18n';
 import LanguageSwitcher from '@/components/LanguageSwitcher';
 import Link from 'next/link';
 
 export default function SuccessPage() {
   const [lang, setLang] = useState('en');
+
+  useEffect(() => {
+    const saved = localStorage.getItem('cgsi-lang');
+    if (saved) setLang(saved);
+  }, []);
 
   return (
     <main className="min-h-screen bg-[#0a0e17] flex items-center justify-center px-4">
