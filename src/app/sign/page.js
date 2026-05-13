@@ -10,7 +10,7 @@ import FormPreview from '@/components/FormPreview';
 const SignaturePad = dynamic(() => import('@/components/SignaturePad'), {
   ssr: false,
   loading: () => (
-    <div className="sig-container" style={{height:160,display:'flex',alignItems:'center',justifyContent:'center'}}>
+    <div className="sig-container" style={{height:200,display:'flex',alignItems:'center',justifyContent:'center'}}>
       <p className="text-caption">Loading signature pad...</p>
     </div>
   ),
@@ -92,7 +92,7 @@ function SignPageContent() {
       const res = await fetch('/api/generate-pdf', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ templateId: data.t, pdfId: data.pdfId, formData: data.f || {}, signatures: processed, positions: data.p || {}, overrides: data.o || {}, sigOffsets: data.s || [] }),
+        body: JSON.stringify({ templateId: data.t, pdfBase64: data.b, formData: data.f || {}, signatures: processed, positions: data.p || {}, overrides: data.o || {}, sigOffsets: data.s || [] }),
       });
       if (res.ok) {
         const result = await res.json();

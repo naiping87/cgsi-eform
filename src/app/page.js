@@ -14,7 +14,7 @@ export default function HomePage() {
   const [link, setLink] = useState('');
   const [copied, setCopied] = useState(false);
   const [uploading, setUploading] = useState(false);
-  const [uploaded, setUploaded] = useState(null); // { filename, sigCount, sigPositions }
+  const [uploaded, setUploaded] = useState(null); // { filename, sigCount, sigPositions, base64 }
   const [sigOffsets, setSigOffsets] = useState([]); // [{x, y}, ...] per signature
   const fileRef = useRef(null);
 
@@ -33,13 +33,22 @@ export default function HomePage() {
     if (!file || !templateId) return;
     setUploading(true);
     try {
+      // Read file as base64 on client side (for reliable link embedding)
+      const base64 = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result.split(',')[1]);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+
+      // Upload to server for signature position detection
       const fd = new FormData();
       fd.append('pdf', file);
       fd.append('templateId', templateId);
       const res = await fetch('/api/store-pdf', { method: 'POST', body: fd });
       const data = await res.json();
       if (data.success) {
-        setUploaded({ id: data.id, filename: file.name, sigCount: data.sigCount, sigPositions: data.sigPositions || [] });
+        setUploaded({ filename: file.name, sigCount: data.sigCount, sigPositions: data.sigPositions || [], base64 });
         setSigOffsets(Array.from({ length: data.sigCount }, () => ({ x: 0, y: 0 })));
       } else alert(data.error);
     } catch (err) {
@@ -51,10 +60,10 @@ export default function HomePage() {
   const generateLink = useCallback(() => {
     if (!uploaded) return;
     const payload = {
-      pdfId: uploaded.id,
       t: templateId,
       sigCount: uploaded.sigCount,
       s: sigOffsets,
+      b: uploaded.base64,
       x: Date.now() + SEVEN_DAYS,
     };
     const base64 = encodeBase64(JSON.stringify(payload));

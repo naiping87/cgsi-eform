@@ -20,7 +20,7 @@ export default function SignaturePad({ onSignatureChange, label, t }) {
     // Set canvas internal resolution to match CSS size (1:1), then scale context
     // This ensures signature_pad touch coordinates (in CSS space) map correctly
     const w = parent.offsetWidth;
-    const h = 160;
+    const h = 200;
     canvas.width = w * ratio;
     canvas.height = h * ratio;
     canvas.style.width = w + 'px';
@@ -45,9 +45,9 @@ export default function SignaturePad({ onSignatureChange, label, t }) {
       const data = padRef.current ? padRef.current.toData() : null;
       const newW = parent.offsetWidth;
       canvas.width = newW * ratio;
-      canvas.height = h * ratio;
+      canvas.height = 200 * ratio;
       canvas.style.width = newW + 'px';
-      canvas.style.height = h + 'px';
+      canvas.style.height = '200px';
       const newCtx = canvas.getContext('2d');
       newCtx.scale(ratio, ratio);
       if (data) padRef.current.fromData(data);

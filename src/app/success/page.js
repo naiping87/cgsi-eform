@@ -84,6 +84,13 @@ export default function SuccessPage() {
               {t(lang, 'downloadPDF') || 'Download PDF'}
             </button>
           )}
+          <button
+            onClick={() => window.close()}
+            className="btn-secondary"
+            style={{marginTop:8,textDecoration:'none',display:'flex'}}
+          >
+            {t(lang, 'closePage') || 'Close Page'}
+          </button>
         </div>
       </div>
     </main>

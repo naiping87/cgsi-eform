@@ -1,12 +1,11 @@
 import { NextResponse } from 'next/server';
 import { generatePDF, getPDFFilename, addSignaturesToPdf } from '@/lib/pdf-generator';
 import { sendPDFByEmail } from '@/lib/mailer';
-import { store } from '@/app/api/store-pdf/route';
 
 export async function POST(request) {
   try {
     const body = await request.json();
-    const { templateId, formData, signatures, overrides, positions, pdfId, sigOffsets } = body;
+    const { templateId, formData, signatures, overrides, positions, pdfBase64, sigOffsets } = body;
 
     // Signature buffer extraction
     const sigBuffers = (signatures || []).map(sig => {
@@ -17,21 +16,17 @@ export async function POST(request) {
 
     let pdfBuffer, filename;
 
-    if (pdfId && store.has(pdfId)) {
-      // Use uploaded PDF — only add signatures
-      const entry = store.get(pdfId);
-      pdfBuffer = await addSignaturesToPdf(entry.buffer, entry.templateId, sigBuffers, sigOffsets || []);
-      filename = entry.filename.replace(/\.pdf$/i, '') + '_signed.pdf';
-
-      // Clean up stored PDF after use
-      store.delete(pdfId);
-    } else {
+    if (pdfBase64) {
+      // Use the uploaded PDF from the link (base64 encoded)
+      const uploadedBuffer = Buffer.from(pdfBase64, 'base64');
+      pdfBuffer = await addSignaturesToPdf(uploadedBuffer, templateId, sigBuffers, sigOffsets || []);
+      filename = 'signed_form.pdf';
+    } else if (templateId && formData) {
       // Fallback: generate from template + formData
-      if (!templateId || !formData) {
-        return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
-      }
       pdfBuffer = await generatePDF(templateId, formData, sigBuffers, { overrides: overrides || {}, positions: positions || {} });
       filename = getPDFFilename(templateId, formData);
+    } else {
+      return NextResponse.json({ error: 'Missing PDF data or template' }, { status: 400 });
     }
 
     // Send email
@@ -45,11 +40,11 @@ export async function POST(request) {
       emailError = emailErr.message || 'Unknown email error';
     }
 
-    const pdfBase64 = pdfBuffer.toString('base64');
+    const resultBase64 = pdfBuffer.toString('base64');
     return NextResponse.json({
       success: true,
       filename,
-      pdfBase64,
+      pdfBase64: resultBase64,
       emailSent,
       emailError,
     });
