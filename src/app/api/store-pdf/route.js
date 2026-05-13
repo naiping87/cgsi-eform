@@ -1,11 +1,11 @@
 import { NextResponse } from 'next/server';
 import { getTemplate } from '@/lib/templates';
+import { SIGNATURE_ANCHORS } from '@/lib/coordinates';
+import { findSignaturePosition } from '@/lib/pdf-search';
 
-// In-memory PDF store (persists within a server instance)
-// Keyed by UUID, stores { buffer, templateId, expires }
+// In-memory PDF store
 const store = new Map();
 
-// Clean expired entries every 10 minutes
 setInterval(() => {
   const now = Date.now();
   for (const [id, entry] of store) {
@@ -35,15 +35,34 @@ export async function POST(request) {
       buffer,
       templateId,
       filename: file.name || 'form.pdf',
-      expires: Date.now() + 24 * 60 * 60 * 1000, // 24 hours
+      expires: Date.now() + 24 * 60 * 60 * 1000,
     });
 
-    console.log(`Stored PDF ${id} (${buffer.length} bytes) for template ${templateId}. Store size: ${store.size}`);
+    // Detect signature positions from the uploaded PDF
+    const anchorConfigs = SIGNATURE_ANCHORS[templateId] || [];
+    const sigPositions = [];
+
+    for (const cfg of anchorConfigs) {
+      try {
+        const pos = await findSignaturePosition(buffer, cfg, { width: 595, height: 842 });
+        sigPositions.push({
+          x: Math.round(pos.x),
+          y: Math.round(pos.y),
+          page: cfg.page,
+          anchor: cfg.anchors?.[0] || 'unknown',
+        });
+      } catch {
+        sigPositions.push({ x: cfg.fallbackX || 0, y: cfg.fallbackY || 0, page: cfg.page, anchor: 'fallback' });
+      }
+    }
+
+    console.log(`Stored PDF ${id}, sig positions:`, sigPositions);
 
     return NextResponse.json({
       success: true,
       id,
       sigCount: template.sigCount,
+      sigPositions,
     });
   } catch (err) {
     console.error('Store PDF failed:', err);

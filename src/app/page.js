@@ -14,7 +14,7 @@ export default function HomePage() {
   const [link, setLink] = useState('');
   const [copied, setCopied] = useState(false);
   const [uploading, setUploading] = useState(false);
-  const [uploaded, setUploaded] = useState(null); // { filename, sigCount }
+  const [uploaded, setUploaded] = useState(null); // { filename, sigCount, sigPositions }
   const [sigOffsets, setSigOffsets] = useState([]); // [{x, y}, ...] per signature
   const fileRef = useRef(null);
 
@@ -39,7 +39,7 @@ export default function HomePage() {
       const res = await fetch('/api/store-pdf', { method: 'POST', body: fd });
       const data = await res.json();
       if (data.success) {
-        setUploaded({ id: data.id, filename: file.name, sigCount: data.sigCount });
+        setUploaded({ id: data.id, filename: file.name, sigCount: data.sigCount, sigPositions: data.sigPositions || [] });
         setSigOffsets(Array.from({ length: data.sigCount }, () => ({ x: 0, y: 0 })));
       } else alert(data.error);
     } catch (err) {
@@ -146,29 +146,38 @@ export default function HomePage() {
                       <p style={{fontSize:11,fontWeight:600,color:'var(--text-secondary)',marginBottom:8}}>
                         Signature Position Offsets (adjust if needed)
                       </p>
-                      {sigOffsets.map((off, i) => (
-                        <div key={i} className="flex-between" style={{marginBottom:4,fontSize:11}}>
-                          <span style={{color:'var(--text-muted)',width:50}}>Sig {i + 1}</span>
-                          <label style={{color:'var(--text-muted)'}}>X</label>
-                          <input type="number" value={off.x}
-                            onChange={e => {
-                              const n = [...sigOffsets]; n[i] = { ...n[i], x: parseInt(e.target.value) || 0 };
-                              setSigOffsets(n);
-                            }}
-                            style={{width:60,padding:'4px 6px',fontSize:12,textAlign:'center'}}
-                          />
-                          <label style={{color:'var(--text-muted)',marginLeft:8}}>Y</label>
-                          <input type="number" value={off.y}
-                            onChange={e => {
-                              const n = [...sigOffsets]; n[i] = { ...n[i], y: parseInt(e.target.value) || 0 };
-                              setSigOffsets(n);
-                            }}
-                            style={{width:60,padding:'4px 6px',fontSize:12,textAlign:'center'}}
-                          />
-                        </div>
-                      ))}
+                      {sigOffsets.map((off, i) => {
+                        const ref = uploaded?.sigPositions?.[i];
+                        return (
+                          <div key={i} style={{marginBottom:6,padding:'6px 8px',borderRadius:6,background:'rgba(255,255,255,0.02)',border:'1px solid var(--border)'}}>
+                            <div style={{display:'flex',alignItems:'center',gap:6,marginBottom:4}}>
+                              <span style={{fontSize:11,fontWeight:600,color:'var(--text)'}}>Sig {i + 1}</span>
+                              {ref && (
+                                <span style={{fontSize:10,color:'var(--success)',background:'var(--success-glow)',padding:'1px 8px',borderRadius:99}}>
+                                  Detected at ({ref.x}, {ref.y}) page {ref.page}
+                                </span>
+                              )}
+                            </div>
+                            <div style={{display:'flex',alignItems:'center',gap:8,fontSize:11}}>
+                              <span style={{color:'var(--text-muted)',minWidth:12}}>X</span>
+                              <input type="number" value={off.x}
+                                onChange={e => { const n = [...sigOffsets]; n[i] = { ...n[i], x: parseInt(e.target.value) || 0 }; setSigOffsets(n); }}
+                                style={{width:64,padding:'4px 6px',fontSize:12,textAlign:'center'}} />
+                              <span style={{color:'var(--text-muted)',minWidth:12}}>Y</span>
+                              <input type="number" value={off.y}
+                                onChange={e => { const n = [...sigOffsets]; n[i] = { ...n[i], y: parseInt(e.target.value) || 0 }; setSigOffsets(n); }}
+                                style={{width:64,padding:'4px 6px',fontSize:12,textAlign:'center'}} />
+                              {ref && (
+                                <span style={{color:'var(--text-muted)',fontSize:10,whiteSpace:'nowrap'}}>
+                                  → final ({ref.x + off.x}, {ref.y + off.y})
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
                       <p style={{fontSize:10,color:'var(--text-muted)',marginTop:4}}>
-                        Positive X = right, Positive Y = up. These shift the auto-detected signature position.
+                        +X = right, +Y = up. Final position shown in green.
                       </p>
                     </div>
                   )}
