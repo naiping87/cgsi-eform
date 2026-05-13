@@ -21,14 +21,25 @@ export async function POST(request) {
     const pdfBuffer = await generatePDF(templateId, formData, sigBuffers);
     const filename = getPDFFilename(templateId, formData);
 
-    // Send email (don't fail if email fails — PDF is already generated)
+    // Send email
+    let emailSent = false;
+    let emailError = null;
     try {
       await sendPDFByEmail(pdfBuffer, filename);
+      emailSent = true;
     } catch (emailErr) {
       console.error('Email send failed:', emailErr);
+      emailError = emailErr.message || 'Unknown email error';
     }
 
-    return NextResponse.json({ success: true, filename });
+    const pdfBase64 = pdfBuffer.toString('base64');
+    return NextResponse.json({
+      success: true,
+      filename,
+      pdfBase64,
+      emailSent,
+      emailError,
+    });
   } catch (err) {
     console.error('PDF generation failed:', err);
     return NextResponse.json({ error: 'PDF generation failed' }, { status: 500 });

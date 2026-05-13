@@ -60,8 +60,14 @@ function SignPageContent() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ templateId: data.t, formData: data.f, signatures: all }),
       });
-      if (res.ok) router.push('/success');
-      else alert('Error generating PDF.');
+      if (res.ok) {
+        const result = await res.json();
+        sessionStorage.setItem('cgsi-pdf-base64', result.pdfBase64 || '');
+        sessionStorage.setItem('cgsi-pdf-filename', result.filename || '');
+        sessionStorage.setItem('cgsi-pdf-emailSent', String(!!result.emailSent));
+        sessionStorage.setItem('cgsi-pdf-emailError', result.emailError || '');
+        router.push('/success');
+      } else alert('Error generating PDF.');
     } catch { alert('Network error.'); }
     finally { setSubmitting(false); }
   }, [data, signatures, lang, router]);
