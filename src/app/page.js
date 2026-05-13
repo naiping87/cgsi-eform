@@ -1,105 +1,61 @@
 'use client';
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { t } from '@/lib/i18n';
 import { getTemplate } from '@/lib/templates';
 import LanguageSwitcher from '@/components/LanguageSwitcher';
 import TemplateSelector from '@/components/TemplateSelector';
-import DynamicForm from '@/components/DynamicForm';
 
 const SEVEN_DAYS = 7 * 24 * 60 * 60 * 1000;
 const encodeBase64 = (s) => btoa(String.fromCharCode(...new TextEncoder().encode(s)));
 
-function loadCalibration(templateId) {
-  try {
-    const raw = localStorage.getItem(`cgsi-cal-${templateId}`);
-    return raw ? JSON.parse(raw) : {};
-  } catch { return {}; }
-}
-
-function saveCalibration(templateId, cal) {
-  localStorage.setItem(`cgsi-cal-${templateId}`, JSON.stringify(cal));
-}
-
 export default function HomePage() {
   const [lang, setLang] = useState('en');
   const [templateId, setTemplateId] = useState(null);
-  const [formData, setFormData] = useState({});
   const [link, setLink] = useState('');
   const [copied, setCopied] = useState(false);
-  const [previewing, setPreviewing] = useState(false);
-  const [calFields, setCalFields] = useState([]);
-  const [showCal, setShowCal] = useState(false);
-  const [calibration, setCalibration] = useState({});
+  const [uploading, setUploading] = useState(false);
+  const [uploaded, setUploaded] = useState(null); // { filename, sigCount }
+  const fileRef = useRef(null);
 
   useEffect(() => {
     const saved = localStorage.getItem('cgsi-lang');
     if (saved) setLang(saved);
-
-    // Load saved calibration for selected template
-    if (templateId) {
-      setCalibration(loadCalibration(templateId));
-      setShowCal(false);
-    }
-  }, [templateId]);
+  }, []);
 
   const handleLangChange = useCallback((newLang) => {
     setLang(newLang);
     localStorage.setItem('cgsi-lang', newLang);
   }, []);
 
-  const handleFieldChange = useCallback((key, value) => {
-    setFormData(prev => ({ ...prev, [key]: value }));
-  }, []);
-
-  const previewPDF = useCallback(async () => {
-    setPreviewing(true);
+  const handleUpload = useCallback(async (e) => {
+    const file = e.target.files?.[0];
+    if (!file || !templateId) return;
+    setUploading(true);
     try {
-      const res = await fetch('/api/preview-pdf', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ templateId, formData, overrides: calibration }),
-      });
-      if (res.ok) {
-        const result = await res.json();
-        setCalFields(result.fields || []);
-        setShowCal(true);
-
-        // Open PDF preview in new tab
-        const byteChars = atob(result.pdfBase64);
-        const byteNums = new Array(byteChars.length);
-        for (let i = 0; i < byteChars.length; i++) byteNums[i] = byteChars.charCodeAt(i);
-        const blob = new Blob([new Uint8Array(byteNums)], { type: 'application/pdf' });
-        window.open(URL.createObjectURL(blob), '_blank');
-      }
+      const fd = new FormData();
+      fd.append('pdf', file);
+      fd.append('templateId', templateId);
+      const res = await fetch('/api/store-pdf', { method: 'POST', body: fd });
+      const data = await res.json();
+      if (data.success) setUploaded({ id: data.id, filename: file.name, sigCount: data.sigCount });
+      else alert(data.error);
     } catch (err) {
-      alert('Preview failed: ' + err.message);
+      alert('Upload failed: ' + err.message);
     }
-    setPreviewing(false);
-  }, [templateId, formData, calibration]);
-
-  const adjustField = useCallback((key, dx, dy) => {
-    setCalibration(prev => {
-      const next = { ...prev };
-      if (!next[key]) next[key] = { x: 0, y: 0 };
-      next[key] = { ...next[key], x: (next[key].x || 0) + dx, y: (next[key].y || 0) + dy };
-      saveCalibration(templateId, next);
-      return next;
-    });
-  }, [templateId]);
-
-  const resetCalibration = useCallback(() => {
-    if (confirm('Reset all calibration offsets?')) {
-      setCalibration({});
-      saveCalibration(templateId, {});
-    }
+    setUploading(false);
   }, [templateId]);
 
   const generateLink = useCallback(() => {
-    saveCalibration(templateId, calibration);
-    const payload = { t: templateId, f: formData, x: Date.now() + SEVEN_DAYS, o: calibration };
+    if (!uploaded) return;
+    const payload = {
+      pdfId: uploaded.id,
+      t: templateId,
+      sigCount: uploaded.sigCount,
+      x: Date.now() + SEVEN_DAYS,
+    };
     const base64 = encodeBase64(JSON.stringify(payload));
     setLink(`${window.location.origin}/sign?d=${encodeURIComponent(base64)}`);
-  }, [templateId, formData, calibration]);
+  }, [templateId, uploaded]);
 
   const copyLink = useCallback(() => {
     if (!navigator.clipboard) return;
@@ -108,6 +64,13 @@ export default function HomePage() {
       setTimeout(() => setCopied(false), 2000);
     });
   }, [link]);
+
+  const reset = () => {
+    setLink('');
+    setTemplateId(null);
+    setUploaded(null);
+    if (fileRef.current) fileRef.current.value = '';
+  };
 
   const template = templateId ? getTemplate(templateId) : null;
 
@@ -128,78 +91,73 @@ export default function HomePage() {
           <>
             <TemplateSelector lang={lang} selected={templateId} onSelect={setTemplateId} />
 
-            {templateId && (
-              <>
-                <DynamicForm lang={lang} templateId={templateId} formData={formData} onChange={handleFieldChange} />
+            {template && (
+              <div style={{marginTop:28}}>
+                <div className="card-highlight">
+                  <p className="text-subtitle" style={{marginBottom:8}}>Step 2 — Upload Filled PDF</p>
+                  <p className="text-caption" style={{marginBottom:16}}>
+                    Fill the form using any PDF editor (Edge, Acrobat, etc.), then upload it here.
+                    The system will add the client&apos;s signature to the correct position.
+                  </p>
 
-                <a href={`/fill?t=${templateId}`} className="btn-secondary" style={{textDecoration:'none',marginBottom:10,marginTop:28}}>
-                  Fill PDF Visually (Click-to-Place)
-                </a>
-
-                <div style={{display:'flex',gap:10}}>
-                  <button onClick={previewPDF} disabled={previewing} className="btn-secondary" style={{flex:1}}>
-                    {previewing ? (
-                      <><div className="spinner" /> Previewing...</>
-                    ) : (
-                      <>{t(lang, 'previewPDF') || 'Preview PDF'}</>
+                  <div className="card" style={{marginBottom:12,textAlign:'center',padding:24}}>
+                    <input
+                      ref={fileRef}
+                      type="file"
+                      accept=".pdf"
+                      onChange={handleUpload}
+                      style={{display:'none'}}
+                      id="pdf-upload"
+                    />
+                    <label
+                      htmlFor="pdf-upload"
+                      style={{
+                        display:'inline-block',padding:'12px 24px',borderRadius:'var(--radius)',
+                        background:uploaded?'var(--success-glow)':uploading?'rgba(255,255,255,0.04)':'var(--accent)',
+                        border:uploaded?'1px solid rgba(52,211,153,0.2)':uploading?'1px solid var(--border)':'none',
+                        color:uploaded?'var(--success)':'#fff',fontSize:14,fontWeight:600,
+                        cursor:'pointer',fontFamily:'var(--font)',transition:'all 0.2s',
+                      }}
+                    >
+                      {uploading ? (
+                        <><div className="spinner" style={{display:'inline-block',marginRight:8}} /> Uploading...</>
+                      ) : uploaded ? (
+                        <>✓ {uploaded.filename}</>
+                      ) : (
+                        <>📄  Choose PDF File</>
+                      )}
+                    </label>
+                    {uploaded && (
+                      <button
+                        onClick={() => { setUploaded(null); if (fileRef.current) fileRef.current.value = ''; }}
+                        style={{marginLeft:12,background:'none',border:'none',color:'var(--text-muted)',fontSize:12,cursor:'pointer',fontFamily:'var(--font)'}}
+                      >
+                        Change
+                      </button>
                     )}
-                  </button>
-                  <button onClick={generateLink} className="btn-primary" style={{flex:2}}>
-                    <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m13.35-.622l1.757-1.757a4.5 4.5 0 00-6.364-6.364l-4.5 4.5a4.5 4.5 0 001.242 7.244" />
-                    </svg>
-                    {t(lang, 'generateLink')}
-                  </button>
+                  </div>
+
+                  {template.sigCount > 1 && (
+                    <div className="badge-warning" style={{marginBottom:12,width:'100%'}}>
+                      <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      This form requires {template.sigCount} signatures
+                    </div>
+                  )}
                 </div>
 
-                {/* Calibration Panel */}
-                {showCal && calFields.length > 0 && (
-                  <div style={{marginTop:20}}>
-                    <div className="card" style={{padding:12}}>
-                      <div className="flex-between" style={{marginBottom:8}}>
-                        <span style={{fontSize:12,fontWeight:600,color:'var(--text-secondary)'}}>
-                          Adjust Field Positions
-                        </span>
-                        <button
-                          onClick={resetCalibration}
-                          style={{background:'none',border:'none',color:'var(--danger)',fontSize:11,cursor:'pointer',fontFamily:'var(--font)'}}
-                        >
-                          Reset All
-                        </button>
-                      </div>
-                      <p style={{fontSize:11,color:'var(--text-muted)',marginBottom:8}}>
-                        Adjust offsets, then click Preview PDF to check. Click Generate Link when done.
-                      </p>
-                      <div style={{maxHeight:200,overflowY:'auto'}}>
-                        {calFields.map((f) => {
-                          const o = calibration[f.key] || { x: 0, y: 0 };
-                          return (
-                            <div key={f.key} className="flex-between" style={{padding:'3px 0',borderBottom:'1px solid var(--border)',fontSize:11}}>
-                              <span style={{color:'var(--text-muted)',width:150,flexShrink:0,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
-                                {f.label || f.key}
-                              </span>
-                              <span style={{display:'flex',alignItems:'center',gap:6}}>
-                                <span style={{color:'var(--text-muted)',width:45,textAlign:'right'}}>X{o.x || 0}</span>
-                                <button onClick={() => adjustField(f.key, -5, 0)} style={btnStyle}>−5</button>
-                                <button onClick={() => adjustField(f.key, -1, 0)} style={btnStyle}>−</button>
-                                <button onClick={() => adjustField(f.key, 1, 0)} style={btnStyle}>+</button>
-                                <button onClick={() => adjustField(f.key, 5, 0)} style={btnStyle}>+5</button>
-                              </span>
-                              <span style={{display:'flex',alignItems:'center',gap:6}}>
-                                <span style={{color:'var(--text-muted)',width:45,textAlign:'right'}}>Y{o.y || 0}</span>
-                                <button onClick={() => adjustField(f.key, 0, 5)} style={btnStyle}>+5</button>
-                                <button onClick={() => adjustField(f.key, 0, 1)} style={btnStyle}>+</button>
-                                <button onClick={() => adjustField(f.key, 0, -1)} style={btnStyle}>−</button>
-                                <button onClick={() => adjustField(f.key, 0, -5)} style={btnStyle}>−5</button>
-                              </span>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </>
+                <button
+                  onClick={generateLink}
+                  disabled={!uploaded}
+                  className="btn-primary mt-8"
+                >
+                  <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m13.35-.622l1.757-1.757a4.5 4.5 0 00-6.364-6.364l-4.5 4.5a4.5 4.5 0 001.242 7.244" />
+                  </svg>
+                  {t(lang, 'generateLink')}
+                </button>
+              </div>
             )}
           </>
         ) : (
@@ -242,10 +200,8 @@ export default function HomePage() {
                 {t(lang, 'linkExpires')}
               </div>
 
-              <button
-                onClick={() => { setLink(''); setTemplateId(null); setFormData({}); }}
-                style={{marginTop:18,background:'none',border:'none',color:'var(--text-muted)',fontSize:13,fontWeight:500,cursor:'pointer',fontFamily:'var(--font)'}}
-              >
+              <button onClick={reset}
+                style={{marginTop:18,background:'none',border:'none',color:'var(--text-muted)',fontSize:13,fontWeight:500,cursor:'pointer',fontFamily:'var(--font)'}}>
                 ← {t(lang, 'backToHome')}
               </button>
             </div>
@@ -255,14 +211,3 @@ export default function HomePage() {
     </main>
   );
 }
-
-const btnStyle = {
-  background:'rgba(255,255,255,0.06)',
-  border:'1px solid var(--border)',
-  borderRadius:4,
-  color:'var(--text)',
-  cursor:'pointer',
-  fontSize:10,
-  padding:'1px 5px',
-  fontFamily:'var(--font)',
-};

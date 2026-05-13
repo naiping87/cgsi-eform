@@ -114,6 +114,46 @@ export async function generatePDF(templateId, formData, signatureBuffers, option
   return Buffer.from(outputBytes);
 }
 
+// Add signatures to an uploaded (already filled) PDF
+export async function addSignaturesToPdf(pdfBuffer, templateId, signatureBuffers) {
+  if (!signatureBuffers || signatureBuffers.length === 0) return pdfBuffer;
+
+  const pdfDoc = await PDFDocument.load(pdfBuffer);
+  const pages = pdfDoc.getPages();
+
+  const anchorConfigs = SIGNATURE_ANCHORS[templateId] || [];
+
+  for (let i = 0; i < Math.min(signatureBuffers.length, anchorConfigs.length); i++) {
+    const sigBuf = signatureBuffers[i];
+    if (!sigBuf) continue;
+
+    const cfg = anchorConfigs[i];
+    const pageSize = cfg.page < pages.length
+      ? pages[cfg.page].getSize()
+      : { width: 595, height: 842 };
+
+    const sigPos = await findSignaturePosition(pdfBuffer, cfg, pageSize);
+    const page = pages[cfg.page];
+    const sigImage = await pdfDoc.embedPng(sigBuf);
+
+    const imgRatio = sigImage.width / sigImage.height;
+    let sigW = cfg.sigWidth;
+    let sigH = sigW / imgRatio;
+    const maxH = cfg.sigMaxHeight || 60;
+    if (sigH > maxH) { sigH = maxH; sigW = sigH * imgRatio; }
+
+    page.drawImage(sigImage, {
+      x: sigPos.x,
+      y: sigPos.y,
+      width: sigW,
+      height: sigH,
+    });
+  }
+
+  const outputBytes = await pdfDoc.save();
+  return Buffer.from(outputBytes);
+}
+
 export function getPDFFilename(templateId, formData) {
   const shortName = TEMPLATE_SHORT_NAMES[templateId] || templateId;
   const clientName = (formData.clientName || formData.applicantName || formData.beneficialOwnerName || 'unknown')
