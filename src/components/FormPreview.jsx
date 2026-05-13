@@ -4,7 +4,7 @@ import { t } from '@/lib/i18n';
 
 export default function FormPreview({ lang, templateId, formData }) {
   const template = getTemplate(templateId);
-  if (!template) return null;
+  if (!template || !formData) return null;
 
   return (
     <div className="preview-card">
