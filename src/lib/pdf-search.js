@@ -1,7 +1,16 @@
-import * as pdfjsLib from 'pdfjs-dist/legacy/build/pdf.mjs';
+let pdfjsLib = null;
 
-// Configure pdfjs worker (Node.js compatible)
-pdfjsLib.GlobalWorkerOptions.workerSrc = '';
+async function getPdfjsLib() {
+  if (pdfjsLib) return pdfjsLib;
+  try {
+    pdfjsLib = await import('pdfjs-dist/legacy/build/pdf.mjs');
+    pdfjsLib.GlobalWorkerOptions.workerSrc = '';
+    return pdfjsLib;
+  } catch (err) {
+    console.warn('pdfjs-dist not available, text search disabled:', err.message);
+    return null;
+  }
+}
 
 /**
  * Search for text patterns in a PDF page and return their bounding boxes.
@@ -11,9 +20,12 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = '';
  * @returns {Promise<{x:number, y:number, width:number, height:number, text:string}[]>}
  */
 export async function findTextInPdf(pdfBuffer, patterns, pageIndex = 0) {
+  const lib = await getPdfjsLib();
+  if (!lib) return [];
+
   const data = new Uint8Array(pdfBuffer);
-  const doc = await pdfjsLib.getDocument({ data, disableAutoFetch: true, disableStream: true }).promise;
-  const page = await doc.getPage(pageIndex + 1); // pdfjs uses 1-based pages
+  const doc = await lib.getDocument({ data, disableAutoFetch: true, disableStream: true }).promise;
+  const page = await doc.getPage(pageIndex + 1);
   const content = await page.getTextContent();
 
   const results = [];
@@ -22,10 +34,8 @@ export async function findTextInPdf(pdfBuffer, patterns, pageIndex = 0) {
   for (const item of content.items) {
     const text = item.str || '';
     const lowerText = text.toLowerCase();
-
     for (const pattern of lowerPatterns) {
       if (lowerText.includes(pattern)) {
-        // transform[4]=translateX, transform[5]=translateY (PDF points, origin bottom-left)
         const x = item.transform[4];
         const y = item.transform[5];
         const w = item.width || 40;
@@ -35,42 +45,31 @@ export async function findTextInPdf(pdfBuffer, patterns, pageIndex = 0) {
     }
   }
 
-  // Sort by y descending (top-to-bottom in PDF coordinates) then x ascending (left-to-right)
   results.sort((a, b) => b.y - a.y || a.x - b.x);
   return results;
 }
 
 /**
  * Find signature placement position using anchor text + relative offset.
- *
- * Strategy: search for anchor texts in priority order, return best match.
- * If no anchor found, use page-size-based fallback position.
- *
- * @param {Buffer} pdfBuffer
- * @param {{anchors: string[], offsetX: number, offsetY: number, fallbackX: number, fallbackY: number, page: number}} config
- * @param {{width:number, height:number}} pageSize - PDF page dimensions in points
- * @returns {Promise<{x:number, y:number}>}
+ * Falls back to config fallbackX/fallbackY if text search fails or is unavailable.
  */
 export async function findSignaturePosition(pdfBuffer, config, pageSize) {
   const { anchors, offsetX = 10, offsetY = -15, page = 0, fallbackX, fallbackY } = config;
 
   try {
     const matches = await findTextInPdf(pdfBuffer, anchors, page);
-
     if (matches.length > 0) {
       const anchor = matches[0];
-      // Place signature: right of anchor by offsetX, below anchor by offsetY
-      // PDF coords: origin bottom-left, so "below" = subtract from y
       return {
         x: anchor.x + offsetX,
         y: anchor.y + offsetY,
       };
     }
+    console.warn(`Anchor text [${anchors.join(', ')}] not found on page ${page}, using fallback`);
   } catch (err) {
-    console.warn('PDF text search failed, using fallback:', err.message);
+    console.warn('PDF text search error, using fallback:', err.message);
   }
 
-  // Fallback: percentage-based positioning from page dimensions
   return {
     x: fallbackX || pageSize.width * 0.5,
     y: fallbackY || pageSize.height * 0.07,
