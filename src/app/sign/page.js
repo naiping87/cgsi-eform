@@ -92,7 +92,7 @@ function SignPageContent() {
       const res = await fetch('/api/generate-pdf', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ templateId: data.t, pdfId: data.pdfId, formData: data.f || {}, signatures: processed, positions: data.p || {}, overrides: data.o || {} }),
+        body: JSON.stringify({ templateId: data.t, pdfId: data.pdfId, formData: data.f || {}, signatures: processed, positions: data.p || {}, overrides: data.o || {}, sigOffsets: data.s || [] }),
       });
       if (res.ok) {
         const result = await res.json();

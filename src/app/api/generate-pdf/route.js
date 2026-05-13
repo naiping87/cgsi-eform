@@ -6,7 +6,7 @@ import { store } from '@/app/api/store-pdf/route';
 export async function POST(request) {
   try {
     const body = await request.json();
-    const { templateId, formData, signatures, overrides, positions, pdfId } = body;
+    const { templateId, formData, signatures, overrides, positions, pdfId, sigOffsets } = body;
 
     // Signature buffer extraction
     const sigBuffers = (signatures || []).map(sig => {
@@ -20,7 +20,7 @@ export async function POST(request) {
     if (pdfId && store.has(pdfId)) {
       // Use uploaded PDF — only add signatures
       const entry = store.get(pdfId);
-      pdfBuffer = await addSignaturesToPdf(entry.buffer, entry.templateId, sigBuffers);
+      pdfBuffer = await addSignaturesToPdf(entry.buffer, entry.templateId, sigBuffers, sigOffsets || []);
       filename = entry.filename.replace(/\.pdf$/i, '') + '_signed.pdf';
 
       // Clean up stored PDF after use

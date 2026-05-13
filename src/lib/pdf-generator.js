@@ -115,7 +115,7 @@ export async function generatePDF(templateId, formData, signatureBuffers, option
 }
 
 // Add signatures to an uploaded (already filled) PDF
-export async function addSignaturesToPdf(pdfBuffer, templateId, signatureBuffers) {
+export async function addSignaturesToPdf(pdfBuffer, templateId, signatureBuffers, sigOffsets = []) {
   if (!signatureBuffers || signatureBuffers.length === 0) return pdfBuffer;
 
   const pdfDoc = await PDFDocument.load(pdfBuffer);
@@ -128,6 +128,7 @@ export async function addSignaturesToPdf(pdfBuffer, templateId, signatureBuffers
     if (!sigBuf) continue;
 
     const cfg = anchorConfigs[i];
+    const offset = sigOffsets[i] || { x: 0, y: 0 };
     const pageSize = cfg.page < pages.length
       ? pages[cfg.page].getSize()
       : { width: 595, height: 842 };
@@ -143,8 +144,8 @@ export async function addSignaturesToPdf(pdfBuffer, templateId, signatureBuffers
     if (sigH > maxH) { sigH = maxH; sigW = sigH * imgRatio; }
 
     page.drawImage(sigImage, {
-      x: sigPos.x,
-      y: sigPos.y,
+      x: sigPos.x + offset.x,
+      y: sigPos.y + offset.y,
       width: sigW,
       height: sigH,
     });

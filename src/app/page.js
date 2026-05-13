@@ -15,6 +15,7 @@ export default function HomePage() {
   const [copied, setCopied] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [uploaded, setUploaded] = useState(null); // { filename, sigCount }
+  const [sigOffsets, setSigOffsets] = useState([]); // [{x, y}, ...] per signature
   const fileRef = useRef(null);
 
   useEffect(() => {
@@ -37,8 +38,10 @@ export default function HomePage() {
       fd.append('templateId', templateId);
       const res = await fetch('/api/store-pdf', { method: 'POST', body: fd });
       const data = await res.json();
-      if (data.success) setUploaded({ id: data.id, filename: file.name, sigCount: data.sigCount });
-      else alert(data.error);
+      if (data.success) {
+        setUploaded({ id: data.id, filename: file.name, sigCount: data.sigCount });
+        setSigOffsets(Array.from({ length: data.sigCount }, () => ({ x: 0, y: 0 })));
+      } else alert(data.error);
     } catch (err) {
       alert('Upload failed: ' + err.message);
     }
@@ -51,6 +54,7 @@ export default function HomePage() {
       pdfId: uploaded.id,
       t: templateId,
       sigCount: uploaded.sigCount,
+      s: sigOffsets,
       x: Date.now() + SEVEN_DAYS,
     };
     const base64 = encodeBase64(JSON.stringify(payload));
@@ -137,12 +141,35 @@ export default function HomePage() {
                     )}
                   </div>
 
-                  {template.sigCount > 1 && (
-                    <div className="badge-warning" style={{marginBottom:12,width:'100%'}}>
-                      <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
-                      This form requires {template.sigCount} signatures
+                  {uploaded && sigOffsets.length > 0 && (
+                    <div className="card" style={{marginBottom:12,padding:12}}>
+                      <p style={{fontSize:11,fontWeight:600,color:'var(--text-secondary)',marginBottom:8}}>
+                        Signature Position Offsets (adjust if needed)
+                      </p>
+                      {sigOffsets.map((off, i) => (
+                        <div key={i} className="flex-between" style={{marginBottom:4,fontSize:11}}>
+                          <span style={{color:'var(--text-muted)',width:50}}>Sig {i + 1}</span>
+                          <label style={{color:'var(--text-muted)'}}>X</label>
+                          <input type="number" value={off.x}
+                            onChange={e => {
+                              const n = [...sigOffsets]; n[i] = { ...n[i], x: parseInt(e.target.value) || 0 };
+                              setSigOffsets(n);
+                            }}
+                            style={{width:60,padding:'4px 6px',fontSize:12,textAlign:'center'}}
+                          />
+                          <label style={{color:'var(--text-muted)',marginLeft:8}}>Y</label>
+                          <input type="number" value={off.y}
+                            onChange={e => {
+                              const n = [...sigOffsets]; n[i] = { ...n[i], y: parseInt(e.target.value) || 0 };
+                              setSigOffsets(n);
+                            }}
+                            style={{width:60,padding:'4px 6px',fontSize:12,textAlign:'center'}}
+                          />
+                        </div>
+                      ))}
+                      <p style={{fontSize:10,color:'var(--text-muted)',marginTop:4}}>
+                        Positive X = right, Positive Y = up. These shift the auto-detected signature position.
+                      </p>
                     </div>
                   )}
                 </div>
