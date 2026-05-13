@@ -25,7 +25,7 @@ function getDisplayValue(templateId, key, value) {
   return value;
 }
 
-export async function generatePDF(templateId, formData, signatureBuffers) {
+export async function generatePDF(templateId, formData, signatureBuffers, overrides = {}) {
   const pdfPath = path.join(FORMS_DIR, PDF_FILES[templateId]);
   const pdfBytes = fs.readFileSync(pdfPath);
 
@@ -56,13 +56,14 @@ export async function generatePDF(templateId, formData, signatureBuffers) {
       if (!value) continue;
       const page = pages[pos.page];
       const displayValue = getDisplayValue(templateId, key, value);
+      const o = overrides[key] || {};
       page.drawText(displayValue, {
-        x: pos.x,
-        y: pos.y,
-        size: pos.size || 10,
+        x: o.x ?? pos.x,
+        y: o.y ?? pos.y,
+        size: o.size ?? pos.size ?? 10,
         font,
         color: rgb(0, 0, 0),
-        maxWidth: pos.maxWidth || 400,
+        maxWidth: o.maxWidth ?? pos.maxWidth ?? 400,
       });
     }
   }
