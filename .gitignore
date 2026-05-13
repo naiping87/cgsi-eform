@@ -36,3 +36,10 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Original PDF sources (keep only renamed copies in public/forms/)
+*.pdf
+!public/forms/*.pdf
+
+# Superpowers session artifacts
+.superpowers/
