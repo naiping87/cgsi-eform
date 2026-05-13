@@ -1,6 +1,7 @@
 // PDF coordinate mappings - origin is bottom-left corner
 // Units: PDF points (1pt = 1/72 inch)
 
+// Text field coordinates (absolute — these are precisely mapped to form fields)
 export const COORDINATES = {
   'client-info-update': {
     fields: {
@@ -34,9 +35,6 @@ export const COORDINATES = {
       kinMobile:         { x: 120, y: 210, size: 10, page: 1 },
       kinEmployment:     { x: 120, y: 190, size: 10, page: 1 },
     },
-    signatures: [
-      { x: 80, y: 60, w: 150, h: 50, page: 1 },
-    ],
   },
 
   'fen-declaration': {
@@ -46,10 +44,6 @@ export const COORDINATES = {
       dealerCode:        { x: 150, y: 580, size: 11, page: 0 },
       fenOption:         { x: 80,  y: 480, size: 10, page: 0 },
     },
-    signatures: [
-      { x: 450, y: 480, w: 120, h: 40, page: 0 },
-      { x: 80,  y: 100, w: 150, h: 50, page: 3 },
-    ],
   },
 
   'change-of-dr': {
@@ -62,9 +56,6 @@ export const COORDINATES = {
       newDrCode:         { x: 450, y: 540, size: 11, page: 0 },
       clientNric:        { x: 120, y: 270, size: 11, page: 0 },
     },
-    signatures: [
-      { x: 350, y: 280, w: 140, h: 50, page: 0 },
-    ],
   },
 
   'w8ben': {
@@ -80,8 +71,78 @@ export const COORDINATES = {
       treatyCountry:       { x: 120, y: 350, size: 10, page: 0 },
       specialRates:        { x: 120, y: 310, size: 10, page: 0 },
     },
-    signatures: [
-      { x: 80, y: 140, w: 150, h: 50, page: 0 },
-    ],
   },
+};
+
+// Signature anchor configurations — keyword-based relative positioning
+// The system searches PDF text for anchor keywords, then places the signature
+// at: anchor.x + offsetX, anchor.y + offsetY (PDF coords, origin bottom-left)
+//
+// offsetY should be NEGATIVE to place signature BELOW the anchor text
+//
+// sigWidth: target signature width in PDF points (~216pt = 3 inches)
+// sigHeight: auto-calculated from aspect ratio, capped by sigMaxHeight
+export const SIGNATURE_ANCHORS = {
+  'client-info-update': [
+    {
+      page: 1,
+      anchors: ['Signature', 'Tandatangan', 'Tandatangan Pelanggan', 'Client Signature'],
+      offsetX: 0,
+      offsetY: -40,
+      sigWidth: 216,
+      sigMaxHeight: 60,
+      // Fallback: bottom-left area of page 1 (pdf-lib A4 page: 595 x 842)
+      fallbackX: 80,
+      fallbackY: 100,
+    },
+  ],
+
+  'fen-declaration': [
+    {
+      page: 0,
+      anchors: ['Signature', 'Tandatangan', 'Applicant'],
+      offsetX: 250,
+      offsetY: -20,
+      sigWidth: 150,
+      sigMaxHeight: 50,
+      fallbackX: 400,
+      fallbackY: 450,
+    },
+    {
+      page: 3,
+      anchors: ['Signature', 'Tandatangan', 'Date'],
+      offsetX: 0,
+      offsetY: -40,
+      sigWidth: 180,
+      sigMaxHeight: 60,
+      fallbackX: 80,
+      fallbackY: 150,
+    },
+  ],
+
+  'change-of-dr': [
+    {
+      page: 0,
+      anchors: ['Signature', 'Tandatangan', 'Confirmed', 'Client'],
+      offsetX: 80,
+      offsetY: -50,
+      sigWidth: 216,
+      sigMaxHeight: 60,
+      fallbackX: 350,
+      fallbackY: 280,
+    },
+  ],
+
+  'w8ben': [
+    {
+      page: 0,
+      anchors: ['Signature', 'Sign Here', '11.', 'Part II'],
+      offsetX: 0,
+      offsetY: -45,
+      sigWidth: 216,
+      sigMaxHeight: 60,
+      fallbackX: 80,
+      fallbackY: 160,
+    },
+  ],
 };

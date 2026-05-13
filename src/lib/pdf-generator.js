@@ -1,8 +1,9 @@
 import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
 import fs from 'fs';
 import path from 'path';
-import { COORDINATES } from './coordinates';
+import { COORDINATES, SIGNATURE_ANCHORS } from './coordinates';
 import { TEMPLATES, TEMPLATE_SHORT_NAMES } from './templates';
+import { findSignaturePosition } from './pdf-search';
 
 const FORMS_DIR = path.join(process.cwd(), 'public', 'forms');
 
@@ -13,39 +14,45 @@ const PDF_FILES = {
   'w8ben': 'w8ben.pdf',
 };
 
-// Replace select option values with their display labels
+// A4 page size in PDF points
+const A4 = { width: 595, height: 842 };
+
 function getDisplayValue(templateId, key, value) {
   const template = TEMPLATES.find(t => t.id === templateId);
   if (!template) return value;
-
   const field = template.fields.find(f => f.key === key);
   if (field && field.type === 'select' && field.options) {
     const option = field.options.find(o => o.value === value);
     return option ? option.label : value;
   }
-
   return value;
 }
 
-// signatureBuffers: Array of Buffer containing PNG binary data from base64 data URLs
 export async function generatePDF(templateId, formData, signatureBuffers) {
   const pdfPath = path.join(FORMS_DIR, PDF_FILES[templateId]);
   const pdfBytes = fs.readFileSync(pdfPath);
+
+  // ---- Phase 1: Find signature positions via text anchors ----
+  const anchorConfigs = SIGNATURE_ANCHORS[templateId] || [];
+  const sigPositions = [];
+
+  for (const cfg of anchorConfigs) {
+    const pos = await findSignaturePosition(pdfBytes, cfg, A4);
+    sigPositions.push({ ...pos, page: cfg.page, sigWidth: cfg.sigWidth, sigMaxHeight: cfg.sigMaxHeight });
+  }
+
+  // ---- Phase 2: Load PDF and fill text fields ----
   const pdfDoc = await PDFDocument.load(pdfBytes);
   const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
   const coord = COORDINATES[templateId];
-
   const pages = pdfDoc.getPages();
 
-  // Fill text fields
-  if (coord.fields) {
+  if (coord && coord.fields) {
     for (const [key, pos] of Object.entries(coord.fields)) {
       const value = formData[key];
       if (!value) continue;
-
       const page = pages[pos.page];
       const displayValue = getDisplayValue(templateId, key, value);
-
       page.drawText(displayValue, {
         x: pos.x,
         y: pos.y,
@@ -57,21 +64,35 @@ export async function generatePDF(templateId, formData, signatureBuffers) {
     }
   }
 
-  // Overlay signature images
-  if (coord.signatures && signatureBuffers) {
-    for (let i = 0; i < coord.signatures.length; i++) {
-      const sigPos = coord.signatures[i];
+  // ---- Phase 3: Overlay signature images at anchor-derived positions ----
+  if (signatureBuffers && signatureBuffers.length > 0) {
+    for (let i = 0; i < signatureBuffers.length; i++) {
       const sigBuf = signatureBuffers[i];
       if (!sigBuf) continue;
+
+      const sigPos = sigPositions[i];
+      if (!sigPos) continue;
 
       const page = pages[sigPos.page];
       const sigImage = await pdfDoc.embedPng(sigBuf);
 
+      // Calculate proportional height from width (signature aspect ratio)
+      const imgRatio = sigImage.width / sigImage.height;
+      let sigW = sigPos.sigWidth;
+      let sigH = sigW / imgRatio;
+
+      // Cap height to avoid exceeding form boundaries
+      const maxH = sigPos.sigMaxHeight || 60;
+      if (sigH > maxH) {
+        sigH = maxH;
+        sigW = sigH * imgRatio;
+      }
+
       page.drawImage(sigImage, {
         x: sigPos.x,
         y: sigPos.y,
-        width: sigPos.w,
-        height: sigPos.h,
+        width: sigW,
+        height: sigH,
       });
     }
   }
