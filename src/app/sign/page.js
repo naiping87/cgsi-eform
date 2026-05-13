@@ -18,6 +18,38 @@ const SignaturePad = dynamic(() => import('@/components/SignaturePad'), {
 
 const decodeBase64 = (s) => new TextDecoder().decode(Uint8Array.from(atob(s), c => c.charCodeAt(0)));
 
+// Remove white/light background from signature image, preserving anti-aliased edges
+function removeWhiteBackground(dataUrl) {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = img.width;
+      canvas.height = img.height;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0);
+      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      const data = imageData.data;
+      for (let i = 0; i < data.length; i += 4) {
+        const r = data[i];
+        const g = data[i + 1];
+        const b = data[i + 2];
+        // Make white/light-gray pixels transparent, keep stroke anti-aliasing
+        if (r > 230 && g > 230 && b > 230) {
+          data[i + 3] = 0;
+        } else if (r > 200 && g > 200 && b > 200) {
+          // Partial transparency for anti-aliased edges
+          const brightness = (r + g + b) / 3;
+          data[i + 3] = Math.round(255 * (1 - (brightness - 200) / 55));
+        }
+      }
+      ctx.putImageData(imageData, 0, 0);
+      resolve(canvas.toDataURL('image/png'));
+    };
+    img.src = dataUrl;
+  });
+}
+
 function SignPageContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -55,10 +87,12 @@ function SignPageContent() {
     if (all.some(s => !s)) { alert(t(lang, 'signatureRequired')); return; }
     setSubmitting(true);
     try {
+      // Remove white background from all signatures before sending
+      const processed = await Promise.all(all.map(s => removeWhiteBackground(s)));
       const res = await fetch('/api/generate-pdf', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ templateId: data.t, formData: data.f, signatures: all }),
+        body: JSON.stringify({ templateId: data.t, formData: data.f, signatures: processed }),
       });
       if (res.ok) {
         const result = await res.json();

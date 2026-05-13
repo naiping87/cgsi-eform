@@ -63,7 +63,7 @@ export const COORDINATES = {
       clientNric:        { x: 120, y: 270, size: 11, page: 0 },
     },
     signatures: [
-      { x: 200, y: 320, w: 150, h: 50, page: 0 },
+      { x: 350, y: 280, w: 140, h: 50, page: 0 },
     ],
   },
 

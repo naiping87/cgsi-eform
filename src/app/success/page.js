@@ -40,20 +40,6 @@ export default function SuccessPage() {
     URL.revokeObjectURL(url);
   };
 
-  const viewPDF = () => {
-    if (!pdfBase64) return;
-    const byteChars = atob(pdfBase64);
-    const byteNums = new Array(byteChars.length);
-    for (let i = 0; i < byteChars.length; i++) {
-      byteNums[i] = byteChars.charCodeAt(i);
-    }
-    const byteArr = new Uint8Array(byteNums);
-    const blob = new Blob([byteArr], { type: 'application/pdf' });
-    const url = URL.createObjectURL(blob);
-    window.open(url, '_blank');
-    URL.revokeObjectURL(url);
-  };
-
   return (
     <main style={{minHeight:'100vh',background:'var(--bg)',display:'flex',alignItems:'center',justifyContent:'center',padding:24}}>
       <div className="bg-glow" />
@@ -91,21 +77,12 @@ export default function SuccessPage() {
 
           {/* PDF action buttons */}
           {pdfBase64 && (
-            <div style={{display:'flex',flexDirection:'column',gap:10,marginBottom:8}}>
-              <button onClick={viewPDF} className="btn-secondary" style={{gap:8}}>
-                <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                </svg>
-                {t(lang, 'viewPDF') || 'View PDF'}
-              </button>
-              <button onClick={downloadPDF} className="btn-primary">
-                <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
-                </svg>
-                {t(lang, 'downloadPDF') || 'Download PDF'}
-              </button>
-            </div>
+            <button onClick={downloadPDF} className="btn-primary" style={{marginBottom:8}}>
+              <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
+              </svg>
+              {t(lang, 'downloadPDF') || 'Download PDF'}
+            </button>
           )}
         </div>
       </div>

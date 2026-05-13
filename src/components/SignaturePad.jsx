@@ -32,7 +32,7 @@ export default function SignaturePad({ onSignatureChange, label, t }) {
 
     padRef.current = new SignaturePadLib(canvas, {
       penColor: 'rgb(15, 23, 42)',
-      backgroundColor: 'rgb(248, 250, 252)',
+      backgroundColor: 'rgba(0,0,0,0)',
     });
 
     padRef.current.addEventListener('endStroke', () => {
