@@ -132,11 +132,11 @@ export const SIGNATURE_ANCHORS = {
       page: 0,
       anchors: ['Signature', 'Confirmed by'],
       offsetX: -40,
-      offsetY: -35,
+      offsetY: 0,
       sigWidth: 150,
       sigMaxHeight: 55,
       fallbackX: 144,
-      fallbackY: 363,
+      fallbackY: 398,
     },
   ],
   'w8ben': [
