@@ -131,7 +131,6 @@ function SignPageContent() {
               key={i}
               onSignatureChange={handleSignatureChange(i)}
               label={`${t(lang, 'signature')} ${i + 1} ${t(lang, 'of')} ${template.sigCount}`}
-              lang={lang}
               t={(key) => t(lang, key)}
             />
           ))}

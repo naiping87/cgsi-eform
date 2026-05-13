@@ -2,9 +2,14 @@
 import { useRef, useEffect, useCallback } from 'react';
 import SignaturePadLib from 'signature_pad';
 
-export default function SignaturePad({ onSignatureChange, label, lang, t }) {
+export default function SignaturePad({ onSignatureChange, label, t }) {
   const canvasRef = useRef(null);
   const padRef = useRef(null);
+  const callbackRef = useRef(onSignatureChange);
+
+  useEffect(() => {
+    callbackRef.current = onSignatureChange;
+  }, [onSignatureChange]);
 
   useEffect(() => {
     if (!canvasRef.current) return;
@@ -21,8 +26,8 @@ export default function SignaturePad({ onSignatureChange, label, lang, t }) {
     });
 
     padRef.current.addEventListener('endStroke', () => {
-      if (onSignatureChange && padRef.current) {
-        onSignatureChange(padRef.current.toDataURL());
+      if (callbackRef.current && padRef.current) {
+        callbackRef.current(padRef.current.toDataURL());
       }
     });
 
@@ -47,9 +52,9 @@ export default function SignaturePad({ onSignatureChange, label, lang, t }) {
   const clear = useCallback(() => {
     if (padRef.current) {
       padRef.current.clear();
-      if (onSignatureChange) onSignatureChange(null);
+      if (callbackRef.current) callbackRef.current(null);
     }
-  }, [onSignatureChange]);
+  }, []);
 
   return (
     <div>
