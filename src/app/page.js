@@ -14,8 +14,7 @@ export default function HomePage() {
   const [link, setLink] = useState('');
   const [copied, setCopied] = useState(false);
   const [uploading, setUploading] = useState(false);
-  const [uploaded, setUploaded] = useState(null); // { filename, sigCount, sigPositions, base64 }
-  const [sigOffsets, setSigOffsets] = useState([]); // [{x, y}, ...] per signature
+  const [uploaded, setUploaded] = useState(null);
   const fileRef = useRef(null);
 
   useEffect(() => {
@@ -49,7 +48,6 @@ export default function HomePage() {
       const data = await res.json();
       if (data.success) {
         setUploaded({ filename: file.name, sigCount: data.sigCount, sigPositions: data.sigPositions || [], base64 });
-        setSigOffsets(Array.from({ length: data.sigCount }, () => ({ x: 0, y: 0 })));
       } else alert(data.error);
     } catch (err) {
       alert('Upload failed: ' + err.message);
@@ -62,10 +60,7 @@ export default function HomePage() {
     const payload = {
       t: templateId,
       sigCount: uploaded.sigCount,
-      s: sigOffsets,
-      pdfId: uploaded.id,
-      // base64 fallback in case /tmp isn't available
-      b: uploaded.base64 && uploaded.base64.length < 50000 ? uploaded.base64 : '',
+      b: uploaded.base64,
       x: Date.now() + SEVEN_DAYS,
     };
     const base64 = encodeBase64(JSON.stringify(payload));
@@ -152,44 +147,16 @@ export default function HomePage() {
                     )}
                   </div>
 
-                  {uploaded && sigOffsets.length > 0 && (
+                  {uploaded && uploaded.sigPositions && uploaded.sigPositions.length > 0 && (
                     <div className="card" style={{marginBottom:12,padding:12}}>
-                      <p style={{fontSize:11,fontWeight:600,color:'var(--text-secondary)',marginBottom:8}}>
-                        Signature Position Offsets (adjust if needed)
+                      <p style={{fontSize:11,fontWeight:600,color:'var(--text-secondary)',marginBottom:4}}>
+                        Signature Detection
                       </p>
-                      {sigOffsets.map((off, i) => {
-                        const ref = uploaded?.sigPositions?.[i];
-                        return (
-                          <div key={i} style={{marginBottom:6,padding:'6px 8px',borderRadius:6,background:'rgba(255,255,255,0.02)',border:'1px solid var(--border)'}}>
-                            <div style={{display:'flex',alignItems:'center',gap:6,marginBottom:4}}>
-                              <span style={{fontSize:11,fontWeight:600,color:'var(--text)'}}>Sig {i + 1}</span>
-                              {ref && (
-                                <span style={{fontSize:10,color:'var(--success)',background:'var(--success-glow)',padding:'1px 8px',borderRadius:99}}>
-                                  Detected at ({ref.x}, {ref.y}) page {ref.page}
-                                </span>
-                              )}
-                            </div>
-                            <div style={{display:'flex',alignItems:'center',gap:8,fontSize:11}}>
-                              <span style={{color:'var(--text-muted)',minWidth:12}}>X</span>
-                              <input type="number" value={off.x}
-                                onChange={e => { const n = [...sigOffsets]; n[i] = { ...n[i], x: parseInt(e.target.value) || 0 }; setSigOffsets(n); }}
-                                style={{width:64,padding:'4px 6px',fontSize:12,textAlign:'center'}} />
-                              <span style={{color:'var(--text-muted)',minWidth:12}}>Y</span>
-                              <input type="number" value={off.y}
-                                onChange={e => { const n = [...sigOffsets]; n[i] = { ...n[i], y: parseInt(e.target.value) || 0 }; setSigOffsets(n); }}
-                                style={{width:64,padding:'4px 6px',fontSize:12,textAlign:'center'}} />
-                              {ref && (
-                                <span style={{color:'var(--text-muted)',fontSize:10,whiteSpace:'nowrap'}}>
-                                  → final ({ref.x + off.x}, {ref.y + off.y})
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                        );
-                      })}
-                      <p style={{fontSize:10,color:'var(--text-muted)',marginTop:4}}>
-                        +X = right, +Y = up. Final position shown in green.
-                      </p>
+                      {uploaded.sigPositions.map((ref, i) => (
+                        <div key={i} style={{fontSize:10,color:'var(--text-muted)',marginBottom:2}}>
+                          Sig {i + 1}: detected at ({ref.x}, {ref.y}) page {ref.page} — anchor: {ref.anchor}
+                        </div>
+                      ))}
                     </div>
                   )}
                 </div>
