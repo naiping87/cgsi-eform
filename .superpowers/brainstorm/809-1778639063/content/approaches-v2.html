@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>架构方案对比</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    background: #f1f5f9;
+    color: #0f172a;
+    padding: 24px;
+    max-width: 800px;
+    margin: 0 auto;
+  }
+  h2 { font-size: 22px; margin-bottom: 4px; color: #0f172a; }
+  .subtitle { color: #475569; margin-bottom: 24px; font-size: 14px; }
+  .card {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    padding: 20px;
+    margin-bottom: 16px;
+    cursor: pointer;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+  .card:hover { border-color: #3b82f6; box-shadow: 0 2px 12px rgba(59,130,246,0.12); }
+  .card.selected { border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59,130,246,0.2); }
+  .card-header { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
+  .letter {
+    width: 32px; height: 32px; border-radius: 8px;
+    background: #3b82f6; color: #fff; font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0; font-size: 14px;
+  }
+  .card h3 { font-size: 16px; color: #0f172a; }
+  .card p { color: #475569; font-size: 14px; line-height: 1.6; }
+  .pros-cons { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 14px; }
+  .pros, .cons { padding: 12px; border-radius: 8px; font-size: 13px; }
+  .pros { background: #f0fdf4; border: 1px solid #bbf7d0; }
+  .cons { background: #fef2f2; border: 1px solid #fecaca; }
+  .pros h4 { color: #15803d; margin-bottom: 6px; }
+  .cons h4 { color: #b91c1c; margin-bottom: 6px; }
+  .pros ul, .cons ul { padding-left: 18px; }
+  .pros li, .cons li { color: #1e293b; margin-bottom: 3px; }
+  .recommendation {
+    background: #eff6ff; border: 1px solid #bfdbfe;
+    border-radius: 10px; padding: 18px; margin-top: 20px;
+    border-left: 4px solid #3b82f6;
+  }
+  .recommendation h3 { color: #1e40af; margin-bottom: 6px; font-size: 15px; }
+  .recommendation p { color: #334155; font-size: 13px; line-height: 1.6; }
+  .selection-bar {
+    position: fixed; bottom: 0; left: 0; right: 0;
+    background: #0f172a; color: #fff;
+    padding: 12px 24px; text-align: center;
+    font-size: 14px; display: none;
+  }
+  .selection-bar.show { display: block; }
+</style>
+</head>
+<body>
+
+<h2>架构方案对比</h2>
+<p class="subtitle">两种可行的技术架构，各有优缺点</p>
+
+<div class="card" onclick="selectCard(this, 'a')" id="card-a">
+  <div class="card-header">
+    <div class="letter">A</div>
+    <h3>单一 Next.js 应用（推荐）</h3>
+  </div>
+  <p>一个代码库搞定前后端：React 页面 + API Routes 处理 PDF 和邮件。部署到 Vercel。</p>
+  <div class="pros-cons">
+    <div class="pros"><h4>优点</h4>
+      <ul>
+        <li>只有一个项目，开发和部署简单</li>
+        <li>Vercel 免费额度足够日常使用</li>
+        <li>API Routes 直接处理，无需跨域</li>
+      </ul>
+    </div>
+    <div class="cons"><h4>缺点</h4>
+      <ul>
+        <li>Vercel 免费版 API 超时 10 秒</li>
+        <li>Serverless 文件系统不可靠</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<div class="card" onclick="selectCard(this, 'b')" id="card-b">
+  <div class="card-header">
+    <div class="letter">B</div>
+    <h3>前后端分离</h3>
+  </div>
+  <p>React 前端部署 Vercel + Express 后端部署 Railway。后端独立处理 PDF 和邮件。</p>
+  <div class="pros-cons">
+    <div class="pros"><h4>优点</h4>
+      <ul>
+        <li>后端无超时限制，大 PDF 也能处理</li>
+        <li>可靠的文件系统</li>
+        <li>前后端独立，扩展灵活</li>
+      </ul>
+    </div>
+    <div class="cons"><h4>缺点</h4>
+      <ul>
+        <li>两个项目，两个部署</li>
+        <li>Railway 免费额度有限</li>
+        <li>需要处理跨域 CORS</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<div class="recommendation">
+  <h3>我的推荐：方案 A — 单一 Next.js 应用</h3>
+  <p>理由：你的 PDF 都不是特别大，PDF 生成在 10 秒内可以完成。一个项目更简单，Vercel 部署零成本。如果以后遇到超时问题，再迁移到方案 B 也很容易。</p>
+</div>
+
+<div class="selection-bar" id="bar">已选择方案，请在终端回复确认</div>
+
+<script>
+  function selectCard(el, id) {
+    document.querySelectorAll('.card').forEach(c => c.classList.remove('selected'));
+    el.classList.add('selected');
+    document.getElementById('bar').classList.add('show');
+  }
+</script>
+</body>
+</html>

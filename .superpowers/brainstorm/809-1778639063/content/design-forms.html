@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>表单字段设计</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif; background: #f8fafc; color: #0f172a; padding: 24px; max-width: 850px; margin: 0 auto; }
+  h2 { font-size: 22px; margin-bottom: 4px; }
+  .subtitle { color: #64748b; margin-bottom: 16px; font-size: 14px; }
+  h3 { font-size: 16px; margin: 20px 0 10px; padding: 8px 12px; background: #fff; border-left: 3px solid #3b82f6; border-radius: 0 6px 6px 0; }
+  .form-card { background: #fff; border: 1px solid #e2e8f0; border-radius: 10px; padding: 16px; margin-bottom: 12px; }
+  .form-card .pages { font-size: 11px; color: #64748b; margin-bottom: 12px; }
+  .field { display: flex; gap: 8px; align-items: baseline; padding: 5px 0; font-size: 13px; }
+  .field-type { font-size: 10px; font-weight: 600; padding: 1px 6px; border-radius: 3px; flex-shrink: 0; min-width: 48px; text-align: center; }
+  .field-type.text { background: #dbeafe; color: #1e40af; }
+  .field-type.select { background: #fef3c7; color: #92400e; }
+  .field-type.check { background: #f0fdf4; color: #15803d; }
+  .field-type.sig { background: #fce7f3; color: #9d174d; }
+  .field-name { font-weight: 600; color: #1e293b; min-width: 130px; }
+  .field-desc { color: #64748b; font-size: 12px; }
+  .sig-row { background: #fdf2f8; border-radius: 6px; padding: 8px 10px; margin-top: 6px; }
+  .summary { background: #f1f5f9; border-radius: 8px; padding: 14px; font-size: 13px; line-height: 1.7; margin-top: 16px; }
+</style>
+</head>
+<body>
+
+<h2>四个 PDF 表单 — 字段设计</h2>
+<p class="subtitle">每个表单需要 Dealer 填写哪些字段、Client 签几个名</p>
+
+<!-- Form 1: Client Info Update -->
+<h3>1. Client Info Update Form (2 页)</h3>
+<div class="form-card">
+  <div class="pages">需要 Dealer 输入的字段：</div>
+
+  <div class="field"><span class="field-type text">文本</span><span class="field-name">Client Name</span><span class="field-desc">客户姓名</span></div>
+  <div class="field"><span class="field-type select">选择</span><span class="field-name">Account Type</span><span class="field-desc">Equities / Margin / All Accounts</span></div>
+  <div class="field"><span class="field-type text">文本</span><span class="field-name">CDS Account No(s)</span><span class="field-desc">CDS 账户号</span></div>
+  <div class="field"><span class="field-type text">文本</span><span class="field-name">New Name</span><span class="field-desc">新姓名（如需更改）</span></div>
+  <div class="field"><span class="field-type text">文本</span><span class="field-name">NRIC/Passport No.</span><span class="field-desc">身份证/护照号</span></div>
+  <div class="field"><span class="field-type select">选择</span><span class="field-name">Resident Status</span><span class="field-desc">Resident / Non-Resident</span></div>
+  <div class="field"><span class="field-type select">选择</span><span class="field-name">Address Type</span><span class="field-desc">Registered / Correspondence</span></div>
+  <div class="field"><span class="field-type text">文本</span><span class="field-name">Address</span><span class="field-desc">地址（多行）</span></div>
+  <div class="field"><span class="field-type text">文本</span><span class="field-name">Mobile No.</span><span class="field-desc">手机号</span></div>
+  <div class="field"><span class="field-type text">文本</span><span class="field-name">Home Tel / Office / Others</span><span class="field-desc">其他电话</span></div>
+  <div class="field"><span class="field-type text">文本</span><span class="field-name">Email Address</span><span class="field-desc">邮箱地址</span></div>
+  <div class="field"><span class="field-type select">选择</span><span class="field-name">Standing Credit Instruction</span><span class="field-desc">Trust Account / Bank Account</span></div>
+  <div class="field"><span class="field-type text">文本</span><span class="field-name">Bank Name / Account Name / Account No.</span><span class="field-desc">银行信息</span></div>
+  <div class="field"><span class="field-type select">选择</span><span class="field-name">Employment Status</span><span class="field-desc">Employed / Self Employed / Others</span></div>
+  <div class="field"><span class="field-type text">文本</span><span class="field-name">Employer/Business Info</span><span class="field-desc">雇主名称、地址、行业、职位等</span></div>
+  <div class="field"><span class="field-type select">选择</span><span class="field-name">Gross Annual Income</span><span class="field-desc">12 个收入区间选择</span></div>
+  <div class="field"><span class="field-type select">选择</span><span class="field-name">Net Worth / Source of Funds / Wealth</span><span class="field-desc">净值 + 资金来源 + 财富来源</span></div>
+  <div class="field"><span class="field-type text">文本</span><span class="field-name">Next of Kin</span><span class="field-desc">亲属姓名、关系、手机号、就业</span></div>
+
+  <div class="sig-row">
+    <strong>签名 (1 处)：</strong> Client 在 Declaration 区域签 1 个名
+  </div>
+</div>
+
+<!-- Form 2: FEN Declaration -->
+<h3>2. Individual FEN Declaration Form (4 页)</h3>
+<div class="form-card">
+  <div class="pages">需要 Dealer 输入的字段：</div>
+
+  <div class="field"><span class="field-type text">文本</span><span class="field-name">Name of Applicant</span><span class="field-desc">申请人姓名</span></div>
+  <div class="field"><span class="field-type text">文本</span><span class="field-name">Trading Account Number</span><span class="field-desc">交易账号</span></div>
+  <div class="field"><span class="field-type text">文本</span><span class="field-name">Dealer Code</span><span class="field-desc">Dealer 代码</span></div>
+  <div class="field"><span class="field-type check">三选一</span><span class="field-name">外汇资产声明</span><span class="field-desc">根据客户情况 3 选 1</span></div>
+
+  <div class="sig-row">
+    <strong>签名 (2 处)：</strong> 三选一声明处签 1 个 + 最终声明处签 1 个
+  </div>
+</div>
+
+<!-- Form 3: Change of DR -->
+<h3>3. Request for Change of DR (1 页)</h3>
+<div class="form-card">
+  <div class="pages">需要 Dealer 输入的字段：</div>
+
+  <div class="field"><span class="field-type text">文本</span><span class="field-name">Client's Name</span><span class="field-desc">客户姓名</span></div>
+  <div class="field"><span class="field-type text">文本</span><span class="field-name">Trading A/C No.</span><span class="field-desc">交易账号</span></div>
+  <div class="field"><span class="field-type text">文本</span><span class="field-name">Existing DR Name & Code</span><span class="field-desc">当前 DR 名称和代码</span></div>
+  <div class="field"><span class="field-type text">文本</span><span class="field-name">New DR Name & Code</span><span class="field-desc">新 DR 名称和代码</span></div>
+  <div class="field"><span class="field-type text">文本</span><span class="field-name">Client NRIC/Company No.</span><span class="field-desc">客户身份证/公司号</span></div>
+
+  <div class="sig-row">
+    <strong>签名 (1 处)：</strong> Client 在 Confirmed by 区域签 1 个名<br>
+    <strong>Dealer 签名：线下处理</strong>（不经过系统）
+  </div>
+</div>
+
+<!-- Form 4: W-8BEN -->
+<h3>4. W-8BEN Form (1 页)</h3>
+<div class="form-card">
+  <div class="pages">需要 Dealer 输入的字段：</div>
+
+  <div class="field"><span class="field-type text">文本</span><span class="field-name">Name of Beneficial Owner</span><span class="field-desc">受益人姓名</span></div>
+  <div class="field"><span class="field-type text">文本</span><span class="field-name">Country of Citizenship</span><span class="field-desc">国籍</span></div>
+  <div class="field"><span class="field-type text">文本</span><span class="field-name">Permanent Residence Address</span><span class="field-desc">永久居住地址</span></div>
+  <div class="field"><span class="field-type text">文本</span><span class="field-name">Mailing Address</span><span class="field-desc">邮寄地址（如不同）</span></div>
+  <div class="field"><span class="field-type text">文本</span><span class="field-name">US TIN (SSN/ITIN)</span><span class="field-desc">美国税号（如有）</span></div>
+  <div class="field"><span class="field-type text">文本</span><span class="field-name">Foreign Tax ID</span><span class="field-desc">外国税号</span></div>
+  <div class="field"><span class="field-type text">文本</span><span class="field-name">Reference Number(s)</span><span class="field-desc">参考号</span></div>
+  <div class="field"><span class="field-type text">文本</span><span class="field-name">Date of Birth</span><span class="field-desc">出生日期 (MM-DD-YYYY)</span></div>
+  <div class="field"><span class="field-type text">文本</span><span class="field-name">Treaty Country</span><span class="field-desc">税务条约国家（第 9 行）</span></div>
+  <div class="field"><span class="field-type text">文本</span><span class="field-name">Special Rates Article</span><span class="field-desc">特殊税率条款（第 10 行）</span></div>
+
+  <div class="sig-row">
+    <strong>签名 (1 处)：</strong> Client 在 Sign Here 区域签 1 个名
+  </div>
+</div>
+
+<div class="summary">
+  <strong>总结：</strong><br>
+  Client Info Update → 约 20 个字段 + 1 签名<br>
+  FEN Declaration → 约 4 个字段 + 2 签名（3选1 + 必签）<br>
+  Change of DR → 5 个字段 + 1 签名（Dealer 签线下）<br>
+  W-8BEN → 约 10 个字段 + 1 签名
+</div>
+
+</body>
+</html>
