@@ -9,6 +9,7 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@vercel/blob": "^2.3.3",
     "canvas": "^3.2.3",
     "next": "^14.2.35",
     "nodemailer": "^6.9.16",

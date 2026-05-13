@@ -32,22 +32,13 @@ export default function HomePage() {
     if (!file || !templateId) return;
     setUploading(true);
     try {
-      // Read file as base64 on client side (for reliable link embedding)
-      const base64 = await new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result.split(',')[1]);
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
-      });
-
-      // Upload to server for signature position detection
       const fd = new FormData();
       fd.append('pdf', file);
       fd.append('templateId', templateId);
       const res = await fetch('/api/store-pdf', { method: 'POST', body: fd });
       const data = await res.json();
       if (data.success) {
-        setUploaded({ filename: file.name, sigCount: data.sigCount, sigPositions: data.sigPositions || [], base64 });
+        setUploaded({ filename: file.name, sigCount: data.sigCount, sigPositions: data.sigPositions || [], blobUrl: data.blobUrl });
       } else alert(data.error);
     } catch (err) {
       alert('Upload failed: ' + err.message);
@@ -60,7 +51,7 @@ export default function HomePage() {
     const payload = {
       t: templateId,
       sigCount: uploaded.sigCount,
-      b: uploaded.base64,
+      blobUrl: uploaded.blobUrl,
       x: Date.now() + SEVEN_DAYS,
     };
     const base64 = encodeBase64(JSON.stringify(payload));

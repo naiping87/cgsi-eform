@@ -1,15 +1,8 @@
 import { NextResponse } from 'next/server';
+import { put } from '@vercel/blob';
 import { getTemplate } from '@/lib/templates';
 import { SIGNATURE_ANCHORS } from '@/lib/coordinates';
 import { findSignaturePosition } from '@/lib/pdf-search';
-import fs from 'fs';
-import path from 'path';
-import os from 'os';
-
-const TMP_DIR = path.join(os.tmpdir(), 'cgsi-pdfs');
-
-// Ensure tmp dir exists
-if (!fs.existsSync(TMP_DIR)) fs.mkdirSync(TMP_DIR, { recursive: true });
 
 export async function POST(request) {
   try {
@@ -27,11 +20,13 @@ export async function POST(request) {
     }
 
     const buffer = Buffer.from(await file.arrayBuffer());
-    const id = 'pdf_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
+    const id = 'pdf_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6);
 
-    // Save to /tmp (persists within Vercel instance)
-    const filePath = path.join(TMP_DIR, id + '.pdf');
-    fs.writeFileSync(filePath, buffer);
+    // Store in Vercel Blob
+    const blob = await put(id, buffer, {
+      access: 'public',
+      contentType: 'application/pdf',
+    });
 
     // Detect signature positions
     const anchorConfigs = SIGNATURE_ANCHORS[templateId] || [];
@@ -51,11 +46,9 @@ export async function POST(request) {
       }
     }
 
-    console.log(`Stored PDF ${id} at ${filePath}, sig positions:`, sigPositions);
-
     return NextResponse.json({
       success: true,
-      id,
+      blobUrl: blob.url,
       sigCount: template.sigCount,
       sigPositions,
     });
@@ -63,16 +56,4 @@ export async function POST(request) {
     console.error('Store PDF failed:', err);
     return NextResponse.json({ error: 'Failed to store PDF' }, { status: 500 });
   }
-}
-
-export function getPdfPath(id) {
-  return path.join(TMP_DIR, id + '.pdf');
-}
-
-export function pdfExists(id) {
-  return fs.existsSync(getPdfPath(id));
-}
-
-export function readPdf(id) {
-  return fs.readFileSync(getPdfPath(id));
 }

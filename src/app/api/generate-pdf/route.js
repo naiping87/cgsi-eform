@@ -5,7 +5,7 @@ import { sendPDFByEmail } from '@/lib/mailer';
 export async function POST(request) {
   try {
     const body = await request.json();
-    const { templateId, formData, signatures, pdfBase64 } = body;
+    const { templateId, formData, signatures, blobUrl } = body;
 
     const sigBuffers = (signatures || []).map(sig => {
       if (!sig) return null;
@@ -15,9 +15,11 @@ export async function POST(request) {
 
     let pdfBuffer, filename;
 
-    if (pdfBase64) {
-      const uploadedBuffer = Buffer.from(pdfBase64, 'base64');
-      pdfBuffer = await addSignaturesToPdf(uploadedBuffer, templateId, sigBuffers);
+    if (blobUrl) {
+      const res = await fetch(blobUrl);
+      if (!res.ok) throw new Error(`Failed to fetch PDF: ${res.status}`);
+      const buffer = Buffer.from(await res.arrayBuffer());
+      pdfBuffer = await addSignaturesToPdf(buffer, templateId, sigBuffers);
       filename = 'signed_form.pdf';
     } else if (templateId && formData) {
       pdfBuffer = await generatePDF(templateId, formData, sigBuffers, {});
