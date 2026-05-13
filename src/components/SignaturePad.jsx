@@ -21,8 +21,8 @@ export default function SignaturePad({ onSignatureChange, label, t }) {
     canvas.style.height = '160px';
 
     padRef.current = new SignaturePadLib(canvas, {
-      penColor: 'rgb(0, 0, 0)',
-      backgroundColor: 'rgb(255, 255, 255)',
+      penColor: 'rgb(15, 23, 42)',
+      backgroundColor: 'rgb(248, 250, 252)',
     });
 
     padRef.current.addEventListener('endStroke', () => {
@@ -37,9 +37,7 @@ export default function SignaturePad({ onSignatureChange, label, t }) {
       canvas.height = 160 * 2;
       canvas.style.width = parent.offsetWidth + 'px';
       canvas.style.height = '160px';
-      if (data) {
-        padRef.current.fromData(data);
-      }
+      if (data) padRef.current.fromData(data);
     };
     window.addEventListener('resize', handleResize);
 
@@ -58,16 +56,16 @@ export default function SignaturePad({ onSignatureChange, label, t }) {
 
   return (
     <div>
-      <div className="flex justify-between items-center mb-1">
-        <span className="text-xs text-gray-500">{label}</span>
-        <button onClick={clear} className="text-xs text-red-500 font-medium">
+      <div className="flex justify-between items-center mb-2">
+        <span className="text-xs font-medium text-slate-400">{label}</span>
+        <button onClick={clear} className="text-xs font-medium text-rose-400 hover:text-rose-300 transition-colors">
           {t('clearSignature')}
         </button>
       </div>
-      <div className="border-2 border-dashed border-gray-300 rounded-xl overflow-hidden bg-white">
+      <div className="border border-white/10 rounded-xl overflow-hidden bg-slate-100 ring-1 ring-white/5">
         <canvas ref={canvasRef} className="w-full touch-none" />
       </div>
-      <p className="text-xs text-gray-400 mt-1 text-center">
+      <p className="text-xs text-slate-500 mt-2 text-center">
         ✍️ {t('signHere')}
       </p>
     </div>

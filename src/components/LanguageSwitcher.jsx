@@ -3,15 +3,15 @@ import { LANGUAGES } from '@/lib/i18n';
 
 export default function LanguageSwitcher({ lang, onLangChange }) {
   return (
-    <div className="flex gap-1 mb-4">
+    <div className="inline-flex gap-0.5 bg-white/5 rounded-full p-0.5 backdrop-blur-sm border border-white/5">
       {LANGUAGES.map((l) => (
         <button
           key={l.code}
           onClick={() => onLangChange(l.code)}
-          className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
+          className={`px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all duration-200 ${
             lang === l.code
-              ? 'bg-blue-600 text-white'
-              : 'bg-gray-200 text-gray-500 hover:bg-gray-300'
+              ? 'bg-indigo-500 text-white shadow-lg shadow-indigo-500/25'
+              : 'text-slate-400 hover:text-slate-200'
           }`}
         >
           {l.label}

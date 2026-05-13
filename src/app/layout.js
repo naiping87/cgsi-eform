@@ -14,7 +14,7 @@ export default function RootLayout({ children }) {
   return (
     <html lang="en">
       <head>
-        <meta name="theme-color" content="#f8fafc" />
+        <meta name="theme-color" content="#0a0e17" />
       </head>
       <body className="antialiased">{children}</body>
     </html>
