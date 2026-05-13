@@ -9,6 +9,7 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "canvas": "^3.2.3",
     "next": "^14.2.35",
     "nodemailer": "^6.9.16",
     "pdf-lib": "^1.17.1",

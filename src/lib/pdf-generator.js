@@ -14,9 +14,6 @@ const PDF_FILES = {
   'w8ben': 'w8ben.pdf',
 };
 
-// A4 page size in PDF points
-const A4 = { width: 595, height: 842 };
-
 function getDisplayValue(templateId, key, value) {
   const template = TEMPLATES.find(t => t.id === templateId);
   if (!template) return value;
@@ -32,20 +29,26 @@ export async function generatePDF(templateId, formData, signatureBuffers) {
   const pdfPath = path.join(FORMS_DIR, PDF_FILES[templateId]);
   const pdfBytes = fs.readFileSync(pdfPath);
 
-  // ---- Phase 1: Find signature positions via text anchors ----
+  // ---- Phase 1: Load PDF and get actual page sizes ----
+  const pdfDoc = await PDFDocument.load(pdfBytes);
+  const pages = pdfDoc.getPages();
+
+  // ---- Phase 2: Find signature positions via text anchors ----
+  // Use actual page dimensions from the loaded PDF for accurate fallback
   const anchorConfigs = SIGNATURE_ANCHORS[templateId] || [];
   const sigPositions = [];
 
   for (const cfg of anchorConfigs) {
-    const pos = await findSignaturePosition(pdfBytes, cfg, A4);
+    const pageSize = cfg.page < pages.length
+      ? pages[cfg.page].getSize()
+      : { width: 595, height: 842 };
+    const pos = await findSignaturePosition(pdfBytes, cfg, pageSize);
     sigPositions.push({ ...pos, page: cfg.page, sigWidth: cfg.sigWidth, sigMaxHeight: cfg.sigMaxHeight });
   }
 
-  // ---- Phase 2: Load PDF and fill text fields ----
-  const pdfDoc = await PDFDocument.load(pdfBytes);
+  // ---- Phase 3: Fill text fields ----
   const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
   const coord = COORDINATES[templateId];
-  const pages = pdfDoc.getPages();
 
   if (coord && coord.fields) {
     for (const [key, pos] of Object.entries(coord.fields)) {
@@ -64,7 +67,7 @@ export async function generatePDF(templateId, formData, signatureBuffers) {
     }
   }
 
-  // ---- Phase 3: Overlay signature images at anchor-derived positions ----
+  // ---- Phase 4: Overlay signature images at anchor-derived positions ----
   if (signatureBuffers && signatureBuffers.length > 0) {
     for (let i = 0; i < signatureBuffers.length; i++) {
       const sigBuf = signatureBuffers[i];
@@ -76,7 +79,7 @@ export async function generatePDF(templateId, formData, signatureBuffers) {
       const page = pages[sigPos.page];
       const sigImage = await pdfDoc.embedPng(sigBuf);
 
-      // Calculate proportional height from width (signature aspect ratio)
+      // Calculate proportional height from width
       const imgRatio = sigImage.width / sigImage.height;
       let sigW = sigPos.sigWidth;
       let sigH = sigW / imgRatio;
