@@ -1,11 +1,9 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
 import { t } from '@/lib/i18n';
 import LanguageSwitcher from '@/components/LanguageSwitcher';
 
 export default function SuccessPage() {
-  const router = useRouter();
   const [lang, setLang] = useState('en');
   const [pdfBase64, setPdfBase64] = useState(null);
   const [filename, setFilename] = useState('');
@@ -24,13 +22,9 @@ export default function SuccessPage() {
   }, []);
 
   const handleClose = () => {
-    // window.close() only works for windows opened by JS.
-    // Fall back to redirecting home.
-    if (window.opener) {
-      window.close();
-    } else {
-      router.push('/');
-    }
+    window.close();
+    // If window.close() is blocked (modern browsers for non-JS-opened tabs),
+    // the user can simply close the tab manually.
   };
 
   const downloadPDF = () => {

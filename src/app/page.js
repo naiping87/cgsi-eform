@@ -62,6 +62,11 @@ export default function HomePage() {
     localStorage.setItem('cgsi-lang', newLang);
   }, []);
 
+  const handleLogout = useCallback(async () => {
+    await fetch('/api/auth/logout', { method: 'POST' });
+    router.push('/login');
+  }, [router]);
+
   const handleUpload = useCallback(async (e) => {
     const file = e.target.files?.[0];
     if (!file || !templateId) return;
@@ -127,7 +132,13 @@ export default function HomePage() {
             <h1 className="text-h1">{t(lang, 'appTitle')}</h1>
             <p style={{fontSize:12,color:'var(--text-muted)',marginTop:2}}>Digital Form System</p>
           </div>
-          <LanguageSwitcher lang={lang} onLangChange={handleLangChange} />
+          <div style={{display:'flex',alignItems:'center',gap:10}}>
+            <LanguageSwitcher lang={lang} onLangChange={handleLangChange} />
+            <button onClick={handleLogout}
+              style={{background:'none',border:'1px solid var(--border)',color:'var(--text-muted)',fontSize:11,padding:'4px 10px',borderRadius:4,cursor:'pointer',fontFamily:'var(--font)'}}>
+              Logout
+            </button>
+          </div>
         </div>
 
         {!link ? (
