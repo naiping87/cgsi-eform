@@ -44,6 +44,8 @@ function SetupPageContent() {
   const templateId = searchParams.get('t') || searchParams.get('templateId');
   const blobUrlParam = searchParams.get('blob');
   const template = templateId ? getTemplate(templateId) : null;
+  // Primary: sessionStorage (more reliable for long URLs), fallback: URL param
+  const blobUrl = blobUrlParam || (typeof window !== 'undefined' ? sessionStorage.getItem('cgsi-setup-blob') : null);
 
   const [lang, setLang] = useState('en');
   const [pageNum, setPageNum] = useState(0);
@@ -84,7 +86,7 @@ function SetupPageContent() {
     ensurePdfjs().then(async (pdfjs) => {
       if (cancelled) return;
       // Use dealer's uploaded PDF if available, otherwise fall back to blank template
-      const pdfUrl = blobUrlParam || PDF_FILES[templateId];
+      const pdfUrl = blobUrl || PDF_FILES[templateId];
       if (!pdfUrl) { setLoading(false); return; }
       try {
         pdfjs.GlobalWorkerOptions.workerSrc = '/pdf-worker.min.js';
@@ -110,7 +112,7 @@ function SetupPageContent() {
       if (!cancelled) { console.error('PDF.js load error:', err); setPdfError('PDF library failed to load.'); setLoading(false); }
     });
     return () => { cancelled = true; };
-  }, [templateId, pageNum]);
+  }, [templateId, pageNum, blobUrl]);
 
   // ---- Coordinate helpers ----
   const screenToPdf = useCallback((clientX, clientY) => {
@@ -275,6 +277,16 @@ function SetupPageContent() {
             </button>
 
             <span style={{color:'#ccc',fontSize:11,marginLeft:'auto'}}>
+              {blobUrl ? (
+                <span style={{background:'rgba(52,211,153,0.12)',color:'var(--success)',padding:'2px 8px',borderRadius:4,fontSize:10}}>
+                  ✓ Uploaded PDF
+                </span>
+              ) : (
+                <span style={{background:'rgba(251,191,36,0.1)',color:'var(--warning)',padding:'2px 8px',borderRadius:4,fontSize:10}}>
+                  ⚠ Blank template
+                </span>
+              )}
+              &nbsp;
               {loading ? 'Loading...' : drawMode ? 'Drag on PDF to draw box' : 'Toggle DRAW ON to mark boxes'}
             </span>
           </div>
