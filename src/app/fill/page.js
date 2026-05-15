@@ -33,6 +33,7 @@ function FillPageContent() {
 
   const [lang, setLang] = useState('en');
   const [pageNum, setPageNum] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
   const [pageSize, setPageSize] = useState({ width: 612, height: 792 });
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({});
@@ -40,7 +41,7 @@ function FillPageContent() {
   const [activeField, setActiveField] = useState(null);
   const [scriptReady, setScriptReady] = useState(false);
   const canvasRef = useRef(null);
-  const pages = template ? Array.from({ length: template.pages || 1 }, (_, i) => i) : [];
+  const pages = Array.from({ length: totalPages || 1 }, (_, i) => i);
 
   useEffect(() => {
     const saved = localStorage.getItem('cgsi-lang');
@@ -65,7 +66,10 @@ function FillPageContent() {
       if (cancelled) return;
       try {
         const doc = await pdfjs.getDocument(pdfUrl).promise;
-        const page = await doc.getPage(pageNum + 1);
+        setTotalPages(doc.numPages);
+        const effectivePage = pageNum < doc.numPages ? pageNum : 0;
+        if (effectivePage !== pageNum) setPageNum(effectivePage);
+        const page = await doc.getPage(effectivePage + 1);
         const vp = page.getViewport({ scale: 1.5 });
         setPageSize({ width: vp.width / 1.5, height: vp.height / 1.5 });
 

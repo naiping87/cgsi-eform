@@ -44,10 +44,9 @@ function SetupPageContent() {
   const templateId = searchParams.get('t') || searchParams.get('templateId');
   const blobUrlParam = searchParams.get('blob');
   const template = templateId ? getTemplate(templateId) : null;
-  // Primary: sessionStorage (more reliable for long URLs), fallback: URL param
-  const blobUrl = blobUrlParam || (typeof window !== 'undefined' ? sessionStorage.getItem('cgsi-setup-blob') : null);
 
   const [lang, setLang] = useState('en');
+  const [blobUrl, setBlobUrl] = useState(blobUrlParam); // URL param is primary
   const [pageNum, setPageNum] = useState(0);
   const [totalPages, setTotalPages] = useState(0); // actual PDF page count
   const [pageSize, setPageSize] = useState({ width: 612, height: 792 });
@@ -59,6 +58,16 @@ function SetupPageContent() {
   const [isMobile, setIsMobile] = useState(false);
   const canvasRef = useRef(null);
   const containerRef = useRef(null);
+
+  // Fallback: read blob URL from sessionStorage on mount
+  useEffect(() => {
+    if (!blobUrl) {
+      try {
+        const stored = sessionStorage.getItem('cgsi-setup-blob');
+        if (stored) setBlobUrl(stored);
+      } catch {}
+    }
+  }, []);
 
   useEffect(() => {
     const saved = localStorage.getItem('cgsi-lang');
@@ -94,9 +103,10 @@ function SetupPageContent() {
         const doc = await pdfjs.getDocument(pdfUrl).promise;
         if (cancelled) return;
         setTotalPages(doc.numPages);
-        // Clamp pageNum to valid range for this PDF
-        if (pageNum >= doc.numPages) setPageNum(0);
-        const page = await doc.getPage(pageNum + 1);
+        // Use effective page number (pageNum is stale closure)
+        const effectivePage = pageNum < doc.numPages ? pageNum : 0;
+        if (effectivePage !== pageNum) setPageNum(effectivePage);
+        const page = await doc.getPage(effectivePage + 1);
         const vp = page.getViewport({ scale: SCALE });
         setPageSize({ width: vp.width / SCALE, height: vp.height / SCALE });
         const canvas = canvasRef.current;

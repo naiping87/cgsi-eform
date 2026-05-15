@@ -54,13 +54,16 @@ export default function HomePage() {
       recipientEmails,
       uploaded,
     }));
-    // Also save blob URL separately so setup page can load the actual uploaded PDF
+    // Also save blob URL for setup page
     if (uploaded?.blobUrl) {
       sessionStorage.setItem('cgsi-setup-blob', uploaded.blobUrl);
     } else {
       sessionStorage.removeItem('cgsi-setup-blob');
     }
-    router.push(`/setup?t=${templateId}`);
+    // Pass blob URL via both URL param (primary) and sessionStorage (fallback)
+    const params = new URLSearchParams({ t: templateId });
+    if (uploaded?.blobUrl) params.set('blob', uploaded.blobUrl);
+    router.push(`/setup?${params.toString()}`);
   }, [templateId, recipientEmails, uploaded, router]);
 
   const handleLangChange = useCallback((newLang) => {
