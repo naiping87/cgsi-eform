@@ -13,41 +13,28 @@ const PDF_FILES = {
 
 const SCALE = 1.5;
 
-// pdf-lib.min.js is an ES module that sets globalThis.pdfjsLib.
-// Must be loaded as type=module.
 let _pdfjsReady = false;
 let _pdfjsPending = null;
 
 function ensurePdfjs() {
   if (_pdfjsReady) return Promise.resolve(window.pdfjsLib);
   if (_pdfjsPending) return _pdfjsPending;
-
   _pdfjsPending = new Promise((resolve, reject) => {
-    // Check if already loaded by another instance
     if (window.pdfjsLib) { _pdfjsReady = true; resolve(window.pdfjsLib); return; }
-
     const script = document.createElement('script');
     script.type = 'module';
     script.src = '/pdf-lib.min.js';
     script.onload = () => {
-      // Module scripts may set pdfjsLib asynchronously (top-level await)
       let attempts = 0;
       const check = setInterval(() => {
         attempts++;
-        if (window.pdfjsLib) {
-          clearInterval(check);
-          _pdfjsReady = true;
-          resolve(window.pdfjsLib);
-        } else if (attempts > 50) {
-          clearInterval(check);
-          reject(new Error('pdfjsLib not available after script load'));
-        }
+        if (window.pdfjsLib) { clearInterval(check); _pdfjsReady = true; resolve(window.pdfjsLib); }
+        else if (attempts > 50) { clearInterval(check); reject(new Error('pdfjsLib not available after script load')); }
       }, 100);
     };
     script.onerror = () => reject(new Error('Failed to load PDF library script'));
     document.head.appendChild(script);
   });
-
   return _pdfjsPending;
 }
 
@@ -64,12 +51,15 @@ function SetupPageContent() {
   const [pdfError, setPdfError] = useState('');
   const [boxes, setBoxes] = useState([]);
   const [drawing, setDrawing] = useState(null);
+  const [drawMode, setDrawMode] = useState(false); // OFF by default — enable to draw boxes
+  const [isMobile, setIsMobile] = useState(false);
   const canvasRef = useRef(null);
   const containerRef = useRef(null);
 
   useEffect(() => {
     const saved = localStorage.getItem('cgsi-lang');
     if (saved) setLang(saved);
+    setIsMobile('ontouchstart' in window || navigator.maxTouchPoints > 0);
   }, []);
 
   // Load saved boxes
@@ -87,17 +77,13 @@ function SetupPageContent() {
   // Load pdfjs and render PDF
   useEffect(() => {
     if (!templateId) return;
-
     let cancelled = false;
     setLoading(true);
     setPdfError('');
-
     ensurePdfjs().then(async (pdfjs) => {
       if (cancelled) return;
-
       const pdfUrl = PDF_FILES[templateId];
       if (!pdfUrl) { setLoading(false); return; }
-
       try {
         pdfjs.GlobalWorkerOptions.workerSrc = '/pdf-worker.min.js';
         const doc = await pdfjs.getDocument(pdfUrl).promise;
@@ -105,7 +91,6 @@ function SetupPageContent() {
         const page = await doc.getPage(pageNum + 1);
         const vp = page.getViewport({ scale: SCALE });
         setPageSize({ width: vp.width / SCALE, height: vp.height / SCALE });
-
         const canvas = canvasRef.current;
         if (!canvas || cancelled) { setLoading(false); return; }
         canvas.width = vp.width;
@@ -117,19 +102,11 @@ function SetupPageContent() {
         if (!cancelled) setLoading(false);
       } catch (err) {
         console.error('Render error:', err);
-        if (!cancelled) {
-          setPdfError('Failed to render PDF: ' + (err.message || 'unknown error'));
-          setLoading(false);
-        }
+        if (!cancelled) { setPdfError('Failed to render PDF: ' + (err.message || 'unknown error')); setLoading(false); }
       }
     }).catch(err => {
-      if (!cancelled) {
-        console.error('PDF.js load error:', err);
-        setPdfError('PDF library failed to load. Please refresh the page.');
-        setLoading(false);
-      }
+      if (!cancelled) { console.error('PDF.js load error:', err); setPdfError('PDF library failed to load.'); setLoading(false); }
     });
-
     return () => { cancelled = true; };
   }, [templateId, pageNum]);
 
@@ -143,9 +120,7 @@ function SetupPageContent() {
     return { x: px / SCALE, y: pageSize.height - py / SCALE };
   }, [pageSize]);
 
-  const pdfToScreen = useCallback((pdfX, pdfY) => {
-    return { sx: pdfX * SCALE, sy: (pageSize.height - pdfY) * SCALE };
-  }, [pageSize]);
+  const pdfToScreen = useCallback((pdfX, pdfY) => ({ sx: pdfX * SCALE, sy: (pageSize.height - pdfY) * SCALE }), [pageSize]);
 
   const getPoint = useCallback((e) => {
     if (e.touches) {
@@ -157,6 +132,8 @@ function SetupPageContent() {
 
   // ---- Drawing handlers ----
   const handlePointerDown = useCallback((e) => {
+    // On touch devices, only draw when drawMode is ON
+    if (e.touches && !drawMode) return;
     const canvas = canvasRef.current;
     if (!canvas) return;
     const pt = getPoint(e);
@@ -164,7 +141,8 @@ function SetupPageContent() {
     if (!pdfPt) return;
     setDrawing({ startX: pdfPt.x, startY: pdfPt.y, curX: pdfPt.x, curY: pdfPt.y });
     e.preventDefault();
-  }, [getPoint, screenToPdf]);
+    e.stopPropagation();
+  }, [getPoint, screenToPdf, drawMode]);
 
   const handlePointerMove = useCallback((e) => {
     if (!drawing) return;
@@ -173,6 +151,7 @@ function SetupPageContent() {
     if (!pdfPt) return;
     setDrawing(prev => prev ? { ...prev, curX: pdfPt.x, curY: pdfPt.y } : null);
     e.preventDefault();
+    e.stopPropagation();
   }, [drawing, getPoint, screenToPdf]);
 
   const handlePointerUp = useCallback(() => {
@@ -184,31 +163,20 @@ function SetupPageContent() {
     const w = x2 - x1;
     const h = y2 - y1;
     if (w > 10 && h > 10) {
-      setBoxes(prev => [...prev, {
-        page: pageNum,
-        x: Math.round(x1), y: Math.round(y1),
-        width: Math.round(w), height: Math.round(h),
-      }]);
+      setBoxes(prev => [...prev, { page: pageNum, x: Math.round(x1), y: Math.round(y1), width: Math.round(w), height: Math.round(h) }]);
     }
     setDrawing(null);
   }, [drawing, pageNum]);
 
-  const deleteBox = useCallback((index) => {
-    setBoxes(prev => prev.filter((_, i) => i !== index));
-  }, []);
-
-  const clearAll = useCallback(() => {
-    if (confirm('Remove all signature boxes?')) setBoxes([]);
-  }, []);
-
+  const deleteBox = useCallback((index) => { setBoxes(prev => prev.filter((_, i) => i !== index)); }, []);
+  const clearAll = useCallback(() => { if (confirm('Remove all signature boxes?')) setBoxes([]); }, []);
   const saveToLocal = useCallback(() => {
     localStorage.setItem(`cgsi-sig-boxes-${templateId}`, JSON.stringify(boxes));
     alert(`Saved ${boxes.length} signature box(es)!`);
   }, [boxes, templateId]);
-
   const goBack = useCallback(() => router.back(), [router]);
 
-  // ---- Draw overlay (red saved boxes + blue active preview) ----
+  // ---- Draw overlay ----
   const redrawOverlay = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -227,7 +195,6 @@ function SetupPageContent() {
     const ctx = overlay.getContext('2d');
     ctx.clearRect(0, 0, overlay.width, overlay.height);
 
-    // Saved boxes (red dashed)
     boxes.forEach((box, i) => {
       if (!box || box.page !== pageNum) return;
       const { sx: x1, sy: y1 } = pdfToScreen(box.x, box.y + box.height);
@@ -242,7 +209,6 @@ function SetupPageContent() {
       ctx.fillText(`Sig ${i + 1}`, x1 + 3, y1 - 5);
     });
 
-    // Active drawing preview (blue)
     if (drawing) {
       const dx1 = Math.min(drawing.startX, drawing.curX);
       const dy1 = Math.min(drawing.startY, drawing.curY);
@@ -271,12 +237,16 @@ function SetupPageContent() {
   }
 
   const pages = Array.from({ length: template.pages || 1 }, (_, i) => i);
+  const isSideBySide = !isMobile;
 
   return (
     <main style={{minHeight:'100vh',background:'var(--bg)'}}>
       <div className="bg-glow" />
-      <div style={{display:'flex',height:'100vh'}}>
-        <div style={{flex:1,overflow:'auto',background:'#525659',position:'relative',padding:16}}>
+      <div style={{display:'flex',flexDirection:isSideBySide?'row':'column',height:isSideBySide?'100vh':'auto',minHeight:'100vh'}}>
+
+        {/* PDF Canvas Area */}
+        <div style={{flex:1,overflow:'auto',background:'#525659',position:'relative',padding:16,minHeight:isSideBySide?0:'60vh'}}>
+          {/* Toolbar */}
           <div style={{marginBottom:10,display:'flex',gap:6,alignItems:'center',flexWrap:'wrap'}}>
             {pages.map(p => (
               <button key={p} onClick={() => setPageNum(p)}
@@ -286,8 +256,24 @@ function SetupPageContent() {
                 Page {p+1}
               </button>
             ))}
+
+            {/* Draw Mode Toggle */}
+            <button
+              onClick={() => setDrawMode(m => !m)}
+              style={{
+                marginLeft:8, padding:'6px 14px', borderRadius:6, border:'2px solid',
+                borderColor: drawMode ? 'var(--danger)' : 'var(--accent)',
+                background: drawMode ? 'rgba(248,113,113,0.15)' : 'rgba(129,140,248,0.1)',
+                color: drawMode ? 'var(--danger)' : 'var(--accent)',
+                fontSize:12, fontWeight:700, cursor:'pointer', fontFamily:'var(--font)',
+                whiteSpace:'nowrap', transition:'all 0.15s',
+              }}
+            >
+              {drawMode ? '⬛ DRAW ON' : '✏️ DRAW OFF'}
+            </button>
+
             <span style={{color:'#ccc',fontSize:11,marginLeft:'auto'}}>
-              {loading ? 'Loading PDF...' : 'Click & drag to draw signature box'}
+              {loading ? 'Loading...' : drawMode ? 'Drag on PDF to draw box' : 'Toggle DRAW ON to mark boxes'}
             </span>
           </div>
 
@@ -312,11 +298,13 @@ function SetupPageContent() {
               onTouchStart={handlePointerDown}
               onTouchMove={handlePointerMove}
               onTouchEnd={handlePointerUp}
-              style={{cursor:'crosshair',maxWidth:'100%',display:loading?'none':'block'}} />
+              style={{cursor:drawMode?'crosshair':'default',maxWidth:'100%',display:loading?'none':'block',
+                touchAction: drawMode ? 'none' : 'pan-y'}} />
           </div>
         </div>
 
-        <div style={{width:320,background:'var(--bg-card)',borderLeft:'1px solid var(--border)',padding:16,overflowY:'auto'}}>
+        {/* Sidebar */}
+        <div style={{width:isSideBySide?320:'100%',minWidth:isSideBySide?320:0,background:'var(--bg-card)',borderLeft:isSideBySide?'1px solid var(--border)':'none',borderTop:isSideBySide?'none':'1px solid var(--border)',padding:16,overflowY:'auto',maxHeight:isSideBySide?'100vh':'none'}}>
           <div className="flex-between" style={{marginBottom:12}}>
             <h2 className="text-h2">{template.name}</h2>
             <button onClick={goBack} style={{background:'none',border:'none',color:'var(--text-muted)',fontSize:12,cursor:'pointer',fontFamily:'var(--font)'}}>
