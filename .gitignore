@@ -41,6 +41,11 @@ next-env.d.ts
 # Original PDF sources (keep only renamed copies in public/forms/)
 *.pdf
 !public/forms/*.pdf
+!public/CGSI_E-Form_Premium_Guide.pdf
+
+# Font files (large, auto-downloaded by scripts)
+scripts/fonts/*
+!scripts/fonts/.gitkeep
 
 # Superpowers session artifacts
 .superpowers/

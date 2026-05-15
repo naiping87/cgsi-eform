@@ -1,5 +1,5 @@
 import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
-import fs from 'fs';
+import { readFile } from 'fs/promises';
 import path from 'path';
 import { COORDINATES, SIGNATURE_ANCHORS } from './coordinates';
 import { TEMPLATES, TEMPLATE_SHORT_NAMES } from './templates';
@@ -28,7 +28,7 @@ function getDisplayValue(templateId, key, value) {
 export async function generatePDF(templateId, formData, signatureBuffers, options = {}) {
   const { overrides = {}, positions = {}, sigBoxes } = options;
   const pdfPath = path.join(FORMS_DIR, PDF_FILES[templateId]);
-  const pdfBytes = fs.readFileSync(pdfPath);
+  const pdfBytes = await readFile(pdfPath);
 
   // ---- Phase 1: Load PDF and get actual page sizes ----
   const pdfDoc = await PDFDocument.load(pdfBytes);

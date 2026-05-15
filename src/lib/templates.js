@@ -100,22 +100,6 @@ export const TEMPLATES = [
     ],
   },
   {
-    id: 'fen-declaration',
-    name: 'Individual FEN Declaration Form',
-    pages: 4,
-    sigCount: 2,
-    fields: [
-      { key: 'applicantName', labelKey: 'applicantName', type: 'text' },
-      { key: 'tradingAccountNo', labelKey: 'tradingAccount', type: 'text' },
-      { key: 'dealerCode', labelKey: 'dealerCode', type: 'text' },
-      { key: 'fenOption', labelKey: 'fenOption', type: 'select', options: [
-        { value: 'no-borrowing', label: 'No domestic Ringgit borrowing/financing' },
-        { value: 'has-borrowing-within', label: 'Has borrowing, within threshold' },
-        { value: 'has-borrowing-exceed', label: 'Has borrowing, exceeds threshold' },
-      ]},
-    ],
-  },
-  {
     id: 'change-of-dr',
     name: 'Request for Change of DR',
     pages: 1,
@@ -148,6 +132,22 @@ export const TEMPLATES = [
       { key: 'specialRates', labelKey: 'specialRates', type: 'text' },
     ],
   },
+  {
+    id: 'fen-declaration',
+    name: 'Others Form',
+    pages: 4,
+    sigCount: 2,
+    fields: [
+      { key: 'applicantName', labelKey: 'applicantName', type: 'text' },
+      { key: 'tradingAccountNo', labelKey: 'tradingAccount', type: 'text' },
+      { key: 'dealerCode', labelKey: 'dealerCode', type: 'text' },
+      { key: 'fenOption', labelKey: 'fenOption', type: 'select', options: [
+        { value: 'no-borrowing', label: 'No domestic Ringgit borrowing/financing' },
+        { value: 'has-borrowing-within', label: 'Has borrowing, within threshold' },
+        { value: 'has-borrowing-exceed', label: 'Has borrowing, exceeds threshold' },
+      ]},
+    ],
+  },
 ];
 
 export function getTemplate(id) {
@@ -157,7 +157,7 @@ export function getTemplate(id) {
 // Short names for PDF file naming
 export const TEMPLATE_SHORT_NAMES = {
   'client-info-update': 'ClientInfoUpdate',
-  'fen-declaration': 'FENDeclaration',
+  'fen-declaration': 'OthersForm',
   'change-of-dr': 'ChangeOfDR',
   'w8ben': 'W8BEN',
 };
