@@ -42,6 +42,7 @@ function SetupPageContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const templateId = searchParams.get('t') || searchParams.get('templateId');
+  const blobUrlParam = searchParams.get('blob');
   const template = templateId ? getTemplate(templateId) : null;
 
   const [lang, setLang] = useState('en');
@@ -82,7 +83,8 @@ function SetupPageContent() {
     setPdfError('');
     ensurePdfjs().then(async (pdfjs) => {
       if (cancelled) return;
-      const pdfUrl = PDF_FILES[templateId];
+      // Use dealer's uploaded PDF if available, otherwise fall back to blank template
+      const pdfUrl = blobUrlParam || PDF_FILES[templateId];
       if (!pdfUrl) { setLoading(false); return; }
       try {
         pdfjs.GlobalWorkerOptions.workerSrc = '/pdf-worker.min.js';

@@ -54,7 +54,9 @@ export default function HomePage() {
       recipientEmails,
       uploaded,
     }));
-    router.push(`/setup?t=${templateId}`);
+    const params = new URLSearchParams({ t: templateId });
+    if (uploaded?.blobUrl) params.set('blob', uploaded.blobUrl);
+    router.push(`/setup?${params.toString()}`);
   }, [templateId, recipientEmails, uploaded, router]);
 
   const handleLangChange = useCallback((newLang) => {

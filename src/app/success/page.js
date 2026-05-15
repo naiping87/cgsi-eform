@@ -9,6 +9,7 @@ export default function SuccessPage() {
   const [filename, setFilename] = useState('');
   const [emailSent, setEmailSent] = useState(null);
   const [emailError, setEmailError] = useState(null);
+  const [closed, setClosed] = useState(false);
 
   useEffect(() => {
     const saved = localStorage.getItem('cgsi-lang');
@@ -22,9 +23,11 @@ export default function SuccessPage() {
   }, []);
 
   const handleClose = () => {
+    // Try window.close() — works if opened via window.open()
     window.close();
-    // If window.close() is blocked (modern browsers for non-JS-opened tabs),
-    // the user can simply close the tab manually.
+    // Fallback: show confirmation state since browsers block close()
+    // for tabs not opened by script
+    setTimeout(() => setClosed(true), 300);
   };
 
   const downloadPDF = () => {
@@ -45,6 +48,23 @@ export default function SuccessPage() {
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
   };
+
+  if (closed) {
+    return (
+      <main style={{minHeight:'100vh',background:'var(--bg)',display:'flex',alignItems:'center',justifyContent:'center',padding:24}}>
+        <div className="bg-glow" />
+        <div className="card-highlight" style={{textAlign:'center',maxWidth:320}}>
+          <div style={{width:56,height:56,borderRadius:'50%',background:'rgba(52,211,153,0.1)',display:'flex',alignItems:'center',justifyContent:'center',margin:'0 auto 18px',border:'1px solid rgba(52,211,153,0.15)'}}>
+            <svg width="28" height="28" fill="none" viewBox="0 0 24 24" stroke="var(--success)" strokeWidth="1.5">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </div>
+          <h2 className="text-h2" style={{marginBottom:8}}>{t(lang, 'closeConfirm')}</h2>
+          <p style={{fontSize:13,color:'var(--text-secondary)',lineHeight:1.6}}>{t(lang, 'closeConfirmDesc')}</p>
+        </div>
+      </main>
+    );
+  }
 
   return (
     <main style={{minHeight:'100vh',background:'var(--bg)',display:'flex',alignItems:'center',justifyContent:'center',padding:24}}>
