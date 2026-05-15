@@ -82,14 +82,11 @@ function SignPageContent() {
   }, []);
 
   const handleSubmit = useCallback(async () => {
-    const tpl = getTemplate(data.t);
-    const effectiveSigCount = data.sigCount || tpl.sigCount;
-    const all = Array.from({ length: effectiveSigCount }, (_, i) => signatures[i]);
-    if (all.some(s => !s)) { alert(t(lang, 'signatureRequired')); return; }
+    if (!signatures[0]) { alert(t(lang, 'signatureRequired')); return; }
     setSubmitting(true);
     try {
-      // Remove white background from all signatures before sending
-      const processed = await Promise.all(all.map(s => removeWhiteBackground(s)));
+      // Remove white background — single signature, applied to all box positions server-side
+      const processed = [await removeWhiteBackground(signatures[0])];
       const res = await fetch('/api/generate-pdf', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -119,7 +116,6 @@ function SignPageContent() {
   if (!data) return <LoadingView />;
 
   const template = getTemplate(data.t);
-  const effectiveSigCount = data.sigCount || template.sigCount;
 
   return (
     <main style={{minHeight:'100vh',background:'var(--bg)'}}>
@@ -143,15 +139,12 @@ function SignPageContent() {
           {t(lang, 'linkExpires')}: {new Date(data.x).toLocaleDateString()}
         </div>
 
-        <div className="mt-6 space-y-3">
-          {Array.from({ length: effectiveSigCount }, (_, i) => (
-            <SignaturePad
-              key={i}
-              onSignatureChange={handleSignatureChange(i)}
-              label={`${t(lang, 'signature')} ${i + 1} ${t(lang, 'of')} ${effectiveSigCount}`}
-              t={(k) => t(lang, k)}
-            />
-          ))}
+        <div className="mt-6">
+          <SignaturePad
+            onSignatureChange={handleSignatureChange(0)}
+            label={t(lang, 'signHere')}
+            t={(k) => t(lang, k)}
+          />
         </div>
 
         <div className="mt-6">

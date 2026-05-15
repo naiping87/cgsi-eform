@@ -88,63 +88,42 @@ export async function generatePDF(templateId, formData, signatureBuffers, option
   }
 
   // ---- Phase 4: Overlay signature images ----
+  // Apply single signature to ALL configured positions
   if (signatureBuffers && signatureBuffers.length > 0) {
-    for (let i = 0; i < signatureBuffers.length; i++) {
-      const sigBuf = signatureBuffers[i];
-      if (!sigBuf) continue;
-
-      const sigPos = sigPositions[i];
-      if (!sigPos) continue;
-
-      const page = pages[sigPos.page];
-      if (!page) continue;
-
+    const sigBuf = signatureBuffers[0];
+    if (!sigBuf) { /* skip */ } else {
       const sigImage = await pdfDoc.embedPng(sigBuf);
+      const imgRatio = sigImage.width / sigImage.height;
 
-      if (sigPos.boxWidth && sigPos.boxHeight) {
-        // Box-based placement: fit signature within the drawn rectangle, maintaining aspect ratio
-        const imgRatio = sigImage.width / sigImage.height;
-        const boxRatio = sigPos.boxWidth / sigPos.boxHeight;
+      for (let i = 0; i < sigPositions.length; i++) {
+        const sigPos = sigPositions[i];
+        if (!sigPos) continue;
 
-        let drawW, drawH, drawX, drawY;
-        if (imgRatio > boxRatio) {
-          // Image is wider than box — fit by width, center vertically
-          drawW = sigPos.boxWidth;
-          drawH = sigPos.boxWidth / imgRatio;
-          drawX = sigPos.x;
-          drawY = sigPos.y + (sigPos.boxHeight - drawH) / 2;
+        const page = pages[sigPos.page];
+        if (!page) continue;
+
+        if (sigPos.boxWidth && sigPos.boxHeight) {
+          const boxRatio = sigPos.boxWidth / sigPos.boxHeight;
+          let drawW, drawH, drawX, drawY;
+          if (imgRatio > boxRatio) {
+            drawW = sigPos.boxWidth;
+            drawH = sigPos.boxWidth / imgRatio;
+            drawX = sigPos.x;
+            drawY = sigPos.y + (sigPos.boxHeight - drawH) / 2;
+          } else {
+            drawH = sigPos.boxHeight;
+            drawW = sigPos.boxHeight * imgRatio;
+            drawX = sigPos.x + (sigPos.boxWidth - drawW) / 2;
+            drawY = sigPos.y;
+          }
+          page.drawImage(sigImage, { x: drawX, y: drawY, width: drawW, height: drawH });
         } else {
-          // Image is taller than box — fit by height, center horizontally
-          drawH = sigPos.boxHeight;
-          drawW = sigPos.boxHeight * imgRatio;
-          drawX = sigPos.x + (sigPos.boxWidth - drawW) / 2;
-          drawY = sigPos.y;
+          let sigW = sigPos.sigWidth;
+          let sigH = sigW / imgRatio;
+          const maxH = sigPos.sigMaxHeight || 60;
+          if (sigH > maxH) { sigH = maxH; sigW = sigH * imgRatio; }
+          page.drawImage(sigImage, { x: sigPos.x, y: sigPos.y, width: sigW, height: sigH });
         }
-
-        page.drawImage(sigImage, {
-          x: drawX,
-          y: drawY,
-          width: drawW,
-          height: drawH,
-        });
-      } else {
-        // Legacy anchor-based placement
-        const imgRatio = sigImage.width / sigImage.height;
-        let sigW = sigPos.sigWidth;
-        let sigH = sigW / imgRatio;
-
-        const maxH = sigPos.sigMaxHeight || 60;
-        if (sigH > maxH) {
-          sigH = maxH;
-          sigW = sigH * imgRatio;
-        }
-
-        page.drawImage(sigImage, {
-          x: sigPos.x,
-          y: sigPos.y,
-          width: sigW,
-          height: sigH,
-        });
       }
     }
   }
@@ -161,38 +140,40 @@ export async function addSignaturesToPdf(pdfBuffer, templateId, signatureBuffers
   const pages = pdfDoc.getPages();
 
   if (sigBoxes && sigBoxes.length > 0) {
-    // Use visual box-based placement
-    for (let i = 0; i < Math.min(signatureBuffers.length, sigBoxes.length); i++) {
-      const sigBuf = signatureBuffers[i];
-      const box = sigBoxes[i];
-      if (!sigBuf || !box) continue;
-
-      const page = pages[box.page || 0];
-      if (!page) continue;
-
+    // Use visual box-based placement — apply single signature to ALL boxes
+    const sigBuf = signatureBuffers[0];
+    if (sigBuf) {
       const sigImage = await pdfDoc.embedPng(sigBuf);
       const imgRatio = sigImage.width / sigImage.height;
-      const boxRatio = box.width / box.height;
 
-      let drawW, drawH, drawX, drawY;
-      if (imgRatio > boxRatio) {
-        drawW = box.width;
-        drawH = box.width / imgRatio;
-        drawX = box.x;
-        drawY = box.y + (box.height - drawH) / 2;
-      } else {
-        drawH = box.height;
-        drawW = box.height * imgRatio;
-        drawX = box.x + (box.width - drawW) / 2;
-        drawY = box.y;
+      for (let i = 0; i < sigBoxes.length; i++) {
+        const box = sigBoxes[i];
+        if (!box) continue;
+
+        const page = pages[box.page || 0];
+        if (!page) continue;
+
+        const boxRatio = box.width / box.height;
+        let drawW, drawH, drawX, drawY;
+        if (imgRatio > boxRatio) {
+          drawW = box.width;
+          drawH = box.width / imgRatio;
+          drawX = box.x;
+          drawY = box.y + (box.height - drawH) / 2;
+        } else {
+          drawH = box.height;
+          drawW = box.height * imgRatio;
+          drawX = box.x + (box.width - drawW) / 2;
+          drawY = box.y;
+        }
+
+        page.drawImage(sigImage, {
+          x: drawX,
+          y: drawY,
+          width: drawW,
+          height: drawH,
+        });
       }
-
-      page.drawImage(sigImage, {
-        x: drawX,
-        y: drawY,
-        width: drawW,
-        height: drawH,
-      });
     }
   } else {
     // Fall back to text-anchor search
