@@ -1,5 +1,6 @@
 'use client';
 import { useState, useCallback, useEffect, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 import { t } from '@/lib/i18n';
 import { getTemplate } from '@/lib/templates';
 import LanguageSwitcher from '@/components/LanguageSwitcher';
@@ -7,8 +8,10 @@ import TemplateSelector from '@/components/TemplateSelector';
 
 const SEVEN_DAYS = 7 * 24 * 60 * 60 * 1000;
 const encodeBase64 = (s) => btoa(String.fromCharCode(...new TextEncoder().encode(s)));
+const STATE_KEY = 'cgsi-home-state';
 
 export default function HomePage() {
+  const router = useRouter();
   const [lang, setLang] = useState('en');
   const [templateId, setTemplateId] = useState(null);
   const [link, setLink] = useState('');
@@ -19,9 +22,20 @@ export default function HomePage() {
   const [sigBoxes, setSigBoxes] = useState(null);
   const fileRef = useRef(null);
 
+  // Restore state on mount (e.g. returning from /setup page)
   useEffect(() => {
     const saved = localStorage.getItem('cgsi-lang');
     if (saved) setLang(saved);
+    try {
+      const raw = sessionStorage.getItem(STATE_KEY);
+      if (raw) {
+        const st = JSON.parse(raw);
+        if (st.templateId) setTemplateId(st.templateId);
+        if (st.recipientEmails) setRecipientEmails(st.recipientEmails);
+        if (st.uploaded) setUploaded(st.uploaded);
+        sessionStorage.removeItem(STATE_KEY);
+      }
+    } catch {}
   }, []);
 
   // Load saved signature boxes for the selected template
@@ -32,6 +46,16 @@ export default function HomePage() {
       setSigBoxes(raw ? JSON.parse(raw) : null);
     } catch { setSigBoxes(null); }
   }, [templateId]);
+
+  const goToSetup = useCallback(() => {
+    // Save current state so we can restore when coming back
+    sessionStorage.setItem(STATE_KEY, JSON.stringify({
+      templateId,
+      recipientEmails,
+      uploaded,
+    }));
+    router.push(`/setup?t=${templateId}`);
+  }, [templateId, recipientEmails, uploaded, router]);
 
   const handleLangChange = useCallback((newLang) => {
     setLang(newLang);
@@ -46,23 +70,27 @@ export default function HomePage() {
       const fd = new FormData();
       fd.append('pdf', file);
       fd.append('templateId', templateId);
+      if (sigBoxes) fd.append('sigBoxes', JSON.stringify(sigBoxes));
       const res = await fetch('/api/store-pdf', { method: 'POST', body: fd });
       const data = await res.json();
       if (data.success) {
-        setUploaded({ filename: file.name, sigCount: data.sigCount, sigPositions: data.sigPositions || [], blobUrl: data.blobUrl });
+        // Use boxes count for sigCount if configured, else fall back to template
+        const effectiveSigCount = sigBoxes ? sigBoxes.length : data.sigCount;
+        setUploaded({ filename: file.name, sigCount: effectiveSigCount, sigPositions: data.sigPositions || [], blobUrl: data.blobUrl });
       } else alert(data.error);
     } catch (err) {
       alert('Upload failed: ' + err.message);
     }
     setUploading(false);
-  }, [templateId]);
+  }, [templateId, sigBoxes]);
 
   const generateLink = useCallback(() => {
     if (!uploaded) return;
     const recipients = recipientEmails.trim();
+    const effectiveSigCount = sigBoxes ? sigBoxes.length : uploaded.sigCount;
     const payload = {
       t: templateId,
-      sigCount: uploaded.sigCount,
+      sigCount: effectiveSigCount,
       blobUrl: uploaded.blobUrl,
       x: Date.now() + SEVEN_DAYS,
     };
@@ -157,7 +185,7 @@ export default function HomePage() {
                 <div style={{marginTop:20,marginBottom:4}}>
                   <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:12}}>
                     <button
-                      onClick={() => window.location.href = `/setup?t=${templateId}`}
+                      onClick={goToSetup}
                       className={sigBoxes ? 'btn-setup-done' : 'btn-setup'}
                     >
                       {sigBoxes ? '✓ ' : '⊞ '}{t(lang, 'setupSigPosition')}
