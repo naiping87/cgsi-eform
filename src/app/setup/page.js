@@ -49,12 +49,13 @@ function SetupPageContent() {
 
   const [lang, setLang] = useState('en');
   const [pageNum, setPageNum] = useState(0);
+  const [totalPages, setTotalPages] = useState(0); // actual PDF page count
   const [pageSize, setPageSize] = useState({ width: 612, height: 792 });
   const [loading, setLoading] = useState(true);
   const [pdfError, setPdfError] = useState('');
   const [boxes, setBoxes] = useState([]);
   const [drawing, setDrawing] = useState(null);
-  const [drawMode, setDrawMode] = useState(false); // OFF by default — enable to draw boxes
+  const [drawMode, setDrawMode] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const canvasRef = useRef(null);
   const containerRef = useRef(null);
@@ -92,6 +93,9 @@ function SetupPageContent() {
         pdfjs.GlobalWorkerOptions.workerSrc = '/pdf-worker.min.js';
         const doc = await pdfjs.getDocument(pdfUrl).promise;
         if (cancelled) return;
+        setTotalPages(doc.numPages);
+        // Clamp pageNum to valid range for this PDF
+        if (pageNum >= doc.numPages) setPageNum(0);
         const page = await doc.getPage(pageNum + 1);
         const vp = page.getViewport({ scale: SCALE });
         setPageSize({ width: vp.width / SCALE, height: vp.height / SCALE });
@@ -199,7 +203,7 @@ function SetupPageContent() {
     const ctx = overlay.getContext('2d');
     ctx.clearRect(0, 0, overlay.width, overlay.height);
 
-    boxes.forEach((box, i) => {
+    validBoxes.forEach((box, i) => {
       if (!box || box.page !== pageNum) return;
       const { sx: x1, sy: y1 } = pdfToScreen(box.x, box.y + box.height);
       const { sx: x2, sy: y2 } = pdfToScreen(box.x + box.width, box.y);
@@ -226,7 +230,7 @@ function SetupPageContent() {
       ctx.lineWidth = 2;
       ctx.strokeRect(sx1, sy1, sx2 - sx1, sy2 - sy1);
     }
-  }, [boxes, drawing, pageNum, pdfToScreen]);
+  }, [validBoxes, drawing, pageNum, pdfToScreen]);
 
   useEffect(() => { redrawOverlay(); }, [redrawOverlay]);
   useEffect(() => { if (!loading && canvasRef.current) redrawOverlay(); }, [loading, redrawOverlay]);
@@ -240,7 +244,9 @@ function SetupPageContent() {
     );
   }
 
-  const pages = Array.from({ length: template.pages || 1 }, (_, i) => i);
+  const pages = Array.from({ length: totalPages || 1 }, (_, i) => i);
+  // Only show boxes that exist on pages that are actually in the loaded PDF
+  const validBoxes = totalPages > 0 ? boxes.filter(b => b && b.page < totalPages) : boxes;
   const isSideBySide = !isMobile;
 
   return (
@@ -329,17 +335,16 @@ function SetupPageContent() {
             {t(lang, 'clickDragToDraw')}
           </p>
 
-          <div style={{marginBottom:8,fontSize:10,color:'var(--text-muted)'}}>
-            {boxes.length} box(es) &nbsp;|&nbsp; Page {pageNum + 1} of {pages.length}
-          </div>
-
-          {boxes.length === 0 && (
+          {validBoxes.length === 0 && (
             <p style={{fontSize:11,color:'var(--text-muted)',textAlign:'center',padding:20}}>
               {t(lang, 'sigNotPositioned')}
             </p>
           )}
 
-          {boxes.map((box, i) => (
+          {boxes.map((box, i) => {
+            // Hide boxes on pages that don't exist in the loaded PDF
+            if (totalPages > 0 && box && box.page >= totalPages) return null;
+            return (
             <div key={i} style={{marginBottom:6,padding:8,borderRadius:8,
               background:'rgba(52,211,153,0.06)',border:'1px solid rgba(52,211,153,0.2)'}}>
               <div style={{fontSize:12,fontWeight:600,color:'#f1f5f9',marginBottom:2}}>
@@ -353,7 +358,8 @@ function SetupPageContent() {
                 Delete
               </button>
             </div>
-          ))}
+            );
+          })}
 
           <div style={{marginTop:16,display:'flex',flexDirection:'column',gap:8}}>
             <button onClick={saveToLocal} className="btn-primary" style={{fontSize:13}} disabled={boxes.length === 0}>
