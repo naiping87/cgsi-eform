@@ -1,6 +1,7 @@
 'use client';
 import { useState, useEffect, useCallback, useRef, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
+import Script from 'next/script';
 import { getTemplate } from '@/lib/templates';
 import { t } from '@/lib/i18n';
 
@@ -12,23 +13,7 @@ const PDF_FILES = {
 };
 
 const SCALE = 1.5;
-let _pdfjsLib = null;
-
-function loadPdfjs() {
-  return new Promise((resolve) => {
-    if (_pdfjsLib) return resolve(_pdfjsLib);
-    if (window.pdfjsLib) { _pdfjsLib = window.pdfjsLib; return resolve(_pdfjsLib); }
-    const script = document.createElement('script');
-    script.src = '/pdf-lib.min.js';
-    script.onload = () => {
-      const check = setInterval(() => {
-        if (window.pdfjsLib) { _pdfjsLib = window.pdfjsLib; clearInterval(check); resolve(_pdfjsLib); }
-      }, 50);
-    };
-    script.onerror = () => resolve(null);
-    document.head.appendChild(script);
-  });
-}
+const PDFJS_LOAD_TIMEOUT = 15000; // 15s timeout for pdfjs script loading
 
 function SetupPageContent() {
   const searchParams = useSearchParams();
@@ -40,6 +25,8 @@ function SetupPageContent() {
   const [pageNum, setPageNum] = useState(0);
   const [pageSize, setPageSize] = useState({ width: 612, height: 792 });
   const [loading, setLoading] = useState(true);
+  const [scriptReady, setScriptReady] = useState(false);
+  const [pdfError, setPdfError] = useState('');
   const [boxes, setBoxes] = useState([]);
   const [drawing, setDrawing] = useState(null);
   const canvasRef = useRef(null);
@@ -50,7 +37,7 @@ function SetupPageContent() {
     if (saved) setLang(saved);
   }, []);
 
-  // Load saved boxes from localStorage
+  // Load saved boxes
   useEffect(() => {
     if (!templateId) return;
     try {
@@ -62,17 +49,28 @@ function SetupPageContent() {
     } catch {}
   }, [templateId]);
 
-  // Load pdfjs and render PDF
+  // Render PDF after script is ready
   useEffect(() => {
-    if (!templateId) return;
-    let cancelled = false;
+    if (!templateId || !scriptReady) return;
 
-    loadPdfjs().then(async (pdfjs) => {
-      if (cancelled || !pdfjs) { if (!cancelled) setLoading(false); return; }
-      const pdfUrl = PDF_FILES[templateId];
-      if (!pdfUrl) { setLoading(false); return; }
+    let cancelled = false;
+    setLoading(true);
+    setPdfError('');
+
+    const pdfjs = window.pdfjsLib;
+    if (!pdfjs) {
+      setPdfError('PDF library failed to load. Please refresh the page.');
+      setLoading(false);
+      return;
+    }
+
+    const pdfUrl = PDF_FILES[templateId];
+    if (!pdfUrl) { setLoading(false); return; }
+
+    (async () => {
       try {
         const doc = await pdfjs.getDocument(pdfUrl).promise;
+        if (cancelled) return;
         const page = await doc.getPage(pageNum + 1);
         const vp = page.getViewport({ scale: SCALE });
         setPageSize({ width: vp.width / SCALE, height: vp.height / SCALE });
@@ -88,12 +86,15 @@ function SetupPageContent() {
         if (!cancelled) setLoading(false);
       } catch (err) {
         console.error('Render error:', err);
-        if (!cancelled) setLoading(false);
+        if (!cancelled) {
+          setPdfError('Failed to render PDF: ' + (err.message || 'unknown error'));
+          setLoading(false);
+        }
       }
-    });
+    })();
 
     return () => { cancelled = true; };
-  }, [templateId, pageNum]);
+  }, [templateId, pageNum, scriptReady]);
 
   // ---- Coordinate helpers ----
   const screenToPdf = useCallback((clientX, clientY) => {
@@ -106,9 +107,7 @@ function SetupPageContent() {
   }, [pageSize]);
 
   const pdfToScreen = useCallback((pdfX, pdfY) => {
-    const sx = pdfX * SCALE;
-    const sy = (pageSize.height - pdfY) * SCALE;
-    return { sx, sy };
+    return { sx: pdfX * SCALE, sy: (pageSize.height - pdfY) * SCALE };
   }, [pageSize]);
 
   const getPoint = useCallback((e) => {
@@ -121,7 +120,6 @@ function SetupPageContent() {
 
   // ---- Drawing handlers ----
   const handlePointerDown = useCallback((e) => {
-    // Check if we're in drawing mode for any slot
     const canvas = canvasRef.current;
     if (!canvas) return;
     const pt = getPoint(e);
@@ -148,14 +146,11 @@ function SetupPageContent() {
     const y2 = Math.max(drawing.startY, drawing.curY);
     const w = x2 - x1;
     const h = y2 - y1;
-
     if (w > 10 && h > 10) {
       setBoxes(prev => [...prev, {
         page: pageNum,
-        x: Math.round(x1),
-        y: Math.round(y1),
-        width: Math.round(w),
-        height: Math.round(h),
+        x: Math.round(x1), y: Math.round(y1),
+        width: Math.round(w), height: Math.round(h),
       }]);
     }
     setDrawing(null);
@@ -174,11 +169,9 @@ function SetupPageContent() {
     alert(`Saved ${boxes.length} signature box(es)!`);
   }, [boxes, templateId]);
 
-  const goBack = useCallback(() => {
-    router.back();
-  }, [router]);
+  const goBack = useCallback(() => router.back(), [router]);
 
-  // ---- Draw overlay (red boxes + blue preview) ----
+  // ---- Draw overlay (red saved boxes + blue active preview) ----
   const redrawOverlay = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -197,7 +190,7 @@ function SetupPageContent() {
     const ctx = overlay.getContext('2d');
     ctx.clearRect(0, 0, overlay.width, overlay.height);
 
-    // Saved boxes (red)
+    // Saved boxes (red dashed)
     boxes.forEach((box, i) => {
       if (!box || box.page !== pageNum) return;
       const { sx: x1, sy: y1 } = pdfToScreen(box.x, box.y + box.height);
@@ -228,15 +221,8 @@ function SetupPageContent() {
     }
   }, [boxes, drawing, pageNum, pdfToScreen]);
 
-  // Re-render overlay on state change
-  useEffect(() => {
-    redrawOverlay();
-  }, [redrawOverlay]);
-
-  // Re-render overlay when canvas finishes loading
-  useEffect(() => {
-    if (!loading && canvasRef.current) redrawOverlay();
-  }, [loading, redrawOverlay]);
+  useEffect(() => { redrawOverlay(); }, [redrawOverlay]);
+  useEffect(() => { if (!loading && canvasRef.current) redrawOverlay(); }, [loading, redrawOverlay]);
 
   if (!template) {
     return (
@@ -251,9 +237,14 @@ function SetupPageContent() {
 
   return (
     <main style={{minHeight:'100vh',background:'var(--bg)'}}>
+      <Script
+        src="/pdf-lib.min.js"
+        strategy="afterInteractive"
+        onLoad={() => setScriptReady(true)}
+        onError={() => { setPdfError('Failed to load PDF library.'); setLoading(false); }}
+      />
       <div className="bg-glow" />
       <div style={{display:'flex',height:'100vh'}}>
-        {/* PDF Canvas Area */}
         <div style={{flex:1,overflow:'auto',background:'#525659',position:'relative',padding:16}}>
           <div style={{marginBottom:10,display:'flex',gap:6,alignItems:'center',flexWrap:'wrap'}}>
             {pages.map(p => (
@@ -265,13 +256,19 @@ function SetupPageContent() {
               </button>
             ))}
             <span style={{color:'#ccc',fontSize:11,marginLeft:'auto'}}>
-              Click &amp; drag anywhere on the PDF to draw a signature box
+              {loading ? 'Loading PDF...' : 'Click & drag to draw signature box'}
             </span>
           </div>
 
-          {loading && (
+          {loading && !pdfError && (
             <div style={{display:'flex',alignItems:'center',justifyContent:'center',height:400,color:'#999'}}>
               <div className="spinner" />&nbsp; Loading PDF...
+            </div>
+          )}
+
+          {pdfError && (
+            <div style={{display:'flex',alignItems:'center',justifyContent:'center',height:400,color:'var(--danger)'}}>
+              {pdfError}
             </div>
           )}
 
@@ -288,7 +285,6 @@ function SetupPageContent() {
           </div>
         </div>
 
-        {/* Sidebar */}
         <div style={{width:320,background:'var(--bg-card)',borderLeft:'1px solid var(--border)',padding:16,overflowY:'auto'}}>
           <div className="flex-between" style={{marginBottom:12}}>
             <h2 className="text-h2">{template.name}</h2>
@@ -297,7 +293,7 @@ function SetupPageContent() {
             </button>
           </div>
           <p className="text-caption" style={{marginBottom:12}}>
-            Click and drag on the PDF to draw signature boxes. Add as many as needed.
+            {t(lang, 'clickDragToDraw')}
           </p>
 
           <div style={{marginBottom:8,fontSize:10,color:'var(--text-muted)'}}>
@@ -306,7 +302,7 @@ function SetupPageContent() {
 
           {boxes.length === 0 && (
             <p style={{fontSize:11,color:'var(--text-muted)',textAlign:'center',padding:20}}>
-              No boxes yet. Drag on the PDF to create one.
+              {t(lang, 'sigNotPositioned')}
             </p>
           )}
 
@@ -314,7 +310,7 @@ function SetupPageContent() {
             <div key={i} style={{marginBottom:6,padding:8,borderRadius:8,
               background:'rgba(52,211,153,0.06)',border:'1px solid rgba(52,211,153,0.2)'}}>
               <div style={{fontSize:12,fontWeight:600,color:'#f1f5f9',marginBottom:2}}>
-                Signature {i + 1}
+                {t(lang, 'signature')} {i + 1}
               </div>
               <div style={{fontSize:10,color:'var(--success)',marginBottom:4}}>
                 Page {box.page + 1} &middot; ({box.x}, {box.y}) &middot; {box.width}&times;{box.height}pt
@@ -336,11 +332,11 @@ function SetupPageContent() {
               </button>
             )}
             <button onClick={goBack} className="btn-secondary" style={{fontSize:12}}>
-              ← Back to Home
+              ← {t(lang, 'backToHome')}
             </button>
           </div>
           <p style={{fontSize:9,color:'var(--text-muted)',textAlign:'center',marginTop:8}}>
-            Boxes saved per template ({templateId}). After saving, go back and upload PDF to generate sign link.
+            After saving, go back and upload PDF to generate sign link.
           </p>
         </div>
       </div>
