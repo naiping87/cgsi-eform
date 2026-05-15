@@ -1,7 +1,6 @@
 'use client';
 import { useState, useEffect, useCallback, useRef, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import Script from 'next/script';
 import { getTemplate } from '@/lib/templates';
 import { t } from '@/lib/i18n';
 
@@ -13,7 +12,44 @@ const PDF_FILES = {
 };
 
 const SCALE = 1.5;
-const PDFJS_LOAD_TIMEOUT = 15000; // 15s timeout for pdfjs script loading
+
+// pdf-lib.min.js is an ES module that sets globalThis.pdfjsLib.
+// Must be loaded as type=module.
+let _pdfjsReady = false;
+let _pdfjsPending = null;
+
+function ensurePdfjs() {
+  if (_pdfjsReady) return Promise.resolve(window.pdfjsLib);
+  if (_pdfjsPending) return _pdfjsPending;
+
+  _pdfjsPending = new Promise((resolve, reject) => {
+    // Check if already loaded by another instance
+    if (window.pdfjsLib) { _pdfjsReady = true; resolve(window.pdfjsLib); return; }
+
+    const script = document.createElement('script');
+    script.type = 'module';
+    script.src = '/pdf-lib.min.js';
+    script.onload = () => {
+      // Module scripts may set pdfjsLib asynchronously (top-level await)
+      let attempts = 0;
+      const check = setInterval(() => {
+        attempts++;
+        if (window.pdfjsLib) {
+          clearInterval(check);
+          _pdfjsReady = true;
+          resolve(window.pdfjsLib);
+        } else if (attempts > 50) {
+          clearInterval(check);
+          reject(new Error('pdfjsLib not available after script load'));
+        }
+      }, 100);
+    };
+    script.onerror = () => reject(new Error('Failed to load PDF library script'));
+    document.head.appendChild(script);
+  });
+
+  return _pdfjsPending;
+}
 
 function SetupPageContent() {
   const searchParams = useSearchParams();
@@ -25,7 +61,6 @@ function SetupPageContent() {
   const [pageNum, setPageNum] = useState(0);
   const [pageSize, setPageSize] = useState({ width: 612, height: 792 });
   const [loading, setLoading] = useState(true);
-  const [scriptReady, setScriptReady] = useState(false);
   const [pdfError, setPdfError] = useState('');
   const [boxes, setBoxes] = useState([]);
   const [drawing, setDrawing] = useState(null);
@@ -49,25 +84,20 @@ function SetupPageContent() {
     } catch {}
   }, [templateId]);
 
-  // Render PDF after script is ready
+  // Load pdfjs and render PDF
   useEffect(() => {
-    if (!templateId || !scriptReady) return;
+    if (!templateId) return;
 
     let cancelled = false;
     setLoading(true);
     setPdfError('');
 
-    const pdfjs = window.pdfjsLib;
-    if (!pdfjs) {
-      setPdfError('PDF library failed to load. Please refresh the page.');
-      setLoading(false);
-      return;
-    }
+    ensurePdfjs().then(async (pdfjs) => {
+      if (cancelled) return;
 
-    const pdfUrl = PDF_FILES[templateId];
-    if (!pdfUrl) { setLoading(false); return; }
+      const pdfUrl = PDF_FILES[templateId];
+      if (!pdfUrl) { setLoading(false); return; }
 
-    (async () => {
       try {
         const doc = await pdfjs.getDocument(pdfUrl).promise;
         if (cancelled) return;
@@ -76,7 +106,7 @@ function SetupPageContent() {
         setPageSize({ width: vp.width / SCALE, height: vp.height / SCALE });
 
         const canvas = canvasRef.current;
-        if (!canvas) { setLoading(false); return; }
+        if (!canvas || cancelled) { setLoading(false); return; }
         canvas.width = vp.width;
         canvas.height = vp.height;
         canvas.style.width = '100%';
@@ -91,10 +121,16 @@ function SetupPageContent() {
           setLoading(false);
         }
       }
-    })();
+    }).catch(err => {
+      if (!cancelled) {
+        console.error('PDF.js load error:', err);
+        setPdfError('PDF library failed to load. Please refresh the page.');
+        setLoading(false);
+      }
+    });
 
     return () => { cancelled = true; };
-  }, [templateId, pageNum, scriptReady]);
+  }, [templateId, pageNum]);
 
   // ---- Coordinate helpers ----
   const screenToPdf = useCallback((clientX, clientY) => {
@@ -237,12 +273,6 @@ function SetupPageContent() {
 
   return (
     <main style={{minHeight:'100vh',background:'var(--bg)'}}>
-      <Script
-        src="/pdf-lib.min.js"
-        strategy="afterInteractive"
-        onLoad={() => setScriptReady(true)}
-        onError={() => { setPdfError('Failed to load PDF library.'); setLoading(false); }}
-      />
       <div className="bg-glow" />
       <div style={{display:'flex',height:'100vh'}}>
         <div style={{flex:1,overflow:'auto',background:'#525659',position:'relative',padding:16}}>
