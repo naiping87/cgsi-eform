@@ -67,7 +67,7 @@ function SetupPageContent() {
         if (stored) setBlobUrl(stored);
       } catch {}
     }
-  }, []);
+  }, [blobUrl]);
 
   useEffect(() => {
     const saved = localStorage.getItem('cgsi-lang');
