@@ -50,7 +50,7 @@ export default function TemplateSelector({ lang, selected, onSelect }) {
               </div>
               <div style={{flex:1,minWidth:0}}>
                 <div className="template-name">{tmpl.name}</div>
-                <div className="template-meta">{tmpl.pages} {t(lang, 'pages')} · {tmpl.sigCount} {t(lang, 'sig')}</div>
+                <div className="template-meta">{tmpl.pages} {t(lang, 'pages')}</div>
               </div>
               <div className={`radio-circle${isSel ? ' checked' : ''}`}>
                 {isSel && (
