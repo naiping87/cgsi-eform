@@ -16,10 +16,10 @@ function createTransporter(host, port, secure, user, pass) {
   });
 }
 
-export async function sendPDFByEmail(pdfBuffer, filename) {
+export async function sendPDFByEmail(pdfBuffer, filename, recipients) {
   const user = process.env.SMTP_USER;
   const pass = process.env.SMTP_PASS;
-  const to = process.env.TO_EMAIL;
+  const to = recipients || process.env.TO_EMAIL;
   const host = process.env.SMTP_HOST;
   const port = parseInt(process.env.SMTP_PORT) || 587;
   const secure = process.env.SMTP_SECURE === 'true';

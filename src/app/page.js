@@ -15,12 +15,23 @@ export default function HomePage() {
   const [copied, setCopied] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [uploaded, setUploaded] = useState(null);
+  const [recipientEmails, setRecipientEmails] = useState('');
+  const [sigBoxes, setSigBoxes] = useState(null);
   const fileRef = useRef(null);
 
   useEffect(() => {
     const saved = localStorage.getItem('cgsi-lang');
     if (saved) setLang(saved);
   }, []);
+
+  // Load saved signature boxes for the selected template
+  useEffect(() => {
+    if (!templateId) { setSigBoxes(null); return; }
+    try {
+      const raw = localStorage.getItem(`cgsi-sig-boxes-${templateId}`);
+      setSigBoxes(raw ? JSON.parse(raw) : null);
+    } catch { setSigBoxes(null); }
+  }, [templateId]);
 
   const handleLangChange = useCallback((newLang) => {
     setLang(newLang);
@@ -48,15 +59,18 @@ export default function HomePage() {
 
   const generateLink = useCallback(() => {
     if (!uploaded) return;
+    const recipients = recipientEmails.trim();
     const payload = {
       t: templateId,
       sigCount: uploaded.sigCount,
       blobUrl: uploaded.blobUrl,
       x: Date.now() + SEVEN_DAYS,
     };
+    if (recipients) payload.e = recipients;
+    if (sigBoxes) payload.sb = sigBoxes;
     const base64 = encodeBase64(JSON.stringify(payload));
     setLink(`${window.location.origin}/sign?d=${encodeURIComponent(base64)}`);
-  }, [templateId, uploaded]);
+  }, [templateId, uploaded, recipientEmails, sigBoxes]);
 
   const copyLink = useCallback(() => {
     if (!navigator.clipboard) return;
@@ -138,6 +152,36 @@ export default function HomePage() {
                     )}
                   </div>
 
+                </div>
+
+                <div style={{marginTop:20,marginBottom:4}}>
+                  <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:12}}>
+                    <button
+                      onClick={() => window.location.href = `/setup?t=${templateId}`}
+                      className={sigBoxes ? 'btn-setup-done' : 'btn-setup'}
+                    >
+                      {sigBoxes ? '✓ ' : '⊞ '}{t(lang, 'setupSigPosition')}
+                      {sigBoxes && ` (${sigBoxes.filter(Boolean).length})`}
+                    </button>
+                  </div>
+
+                  <label style={{fontSize:12,fontWeight:600,color:'var(--text-secondary)',display:'block',marginBottom:6}}>
+                    {t(lang, 'recipientEmail')}
+                  </label>
+                  <input
+                    type="text"
+                    value={recipientEmails}
+                    onChange={(e) => setRecipientEmails(e.target.value)}
+                    placeholder={t(lang, 'recipientEmailPlaceholder')}
+                    style={{
+                      width:'100%',padding:'10px 14px',borderRadius:'var(--radius)',
+                      border:'1px solid var(--border)',background:'var(--bg-card)',
+                      color:'#f1f5f9',fontSize:13,fontFamily:'var(--font)',outline:'none',
+                    }}
+                  />
+                  <p style={{fontSize:10,color:'var(--text-muted)',marginTop:4}}>
+                    Leave blank to use default email.
+                  </p>
                 </div>
 
                 <button

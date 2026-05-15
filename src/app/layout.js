@@ -129,6 +129,23 @@ export default function RootLayout({ children }) {
           }
           .btn-secondary:hover{background:rgba(255,255,255,0.1)}
           .btn-secondary:active{transform:scale(0.98)}
+          .btn-setup{
+            padding:8px 16px;border-radius:var(--radius);
+            border:1px solid var(--accent);background:transparent;
+            color:var(--accent);font-size:12px;font-weight:500;
+            cursor:pointer;font-family:var(--font);white-space:nowrap;
+            transition:all 0.2s;
+          }
+          .btn-setup:hover{background:var(--accent-glow)}
+          .btn-setup-done{
+            padding:8px 16px;border-radius:var(--radius);
+            border:1px solid rgba(52,211,153,0.3);
+            background:rgba(52,211,153,0.06);
+            color:var(--success);font-size:12px;font-weight:500;
+            cursor:pointer;font-family:var(--font);white-space:nowrap;
+            transition:all 0.2s;
+          }
+          .btn-setup-done:hover{background:rgba(52,211,153,0.12)}
 
           /* ===== TEMPLATE CARD ===== */
           .template-card{

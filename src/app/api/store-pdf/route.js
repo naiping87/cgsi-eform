@@ -9,6 +9,7 @@ export async function POST(request) {
     const formData = await request.formData();
     const file = formData.get('pdf');
     const templateId = formData.get('templateId');
+    const sigBoxesRaw = formData.get('sigBoxes');
 
     if (!file || !templateId) {
       return NextResponse.json({ error: 'Missing PDF file or templateId' }, { status: 400 });
@@ -28,21 +29,38 @@ export async function POST(request) {
       contentType: 'application/pdf',
     });
 
-    // Detect signature positions
-    const anchorConfigs = SIGNATURE_ANCHORS[templateId] || [];
-    const sigPositions = [];
+    // Determine signature positions: use visual boxes if provided, else fall back to text-anchor search
+    let sigBoxes = null;
+    if (sigBoxesRaw) {
+      try { sigBoxes = JSON.parse(sigBoxesRaw); } catch {}
+    }
 
-    for (const cfg of anchorConfigs) {
-      try {
-        const pos = await findSignaturePosition(buffer, cfg, { width: 595, height: 842 });
-        sigPositions.push({
-          x: Math.round(pos.x),
-          y: Math.round(pos.y),
-          page: cfg.page,
-          anchor: cfg.anchors?.[0] || 'unknown',
-        });
-      } catch {
-        sigPositions.push({ x: cfg.fallbackX || 0, y: cfg.fallbackY || 0, page: cfg.page, anchor: 'fallback' });
+    let sigPositions;
+    if (sigBoxes && sigBoxes.length > 0) {
+      sigPositions = sigBoxes.filter(Boolean).map((box, i) => ({
+        x: box.x,
+        y: box.y,
+        width: box.width,
+        height: box.height,
+        page: box.page || 0,
+        anchor: 'visual-box',
+      }));
+    } else {
+      // Fall back to text-anchor search
+      const anchorConfigs = SIGNATURE_ANCHORS[templateId] || [];
+      sigPositions = [];
+      for (const cfg of anchorConfigs) {
+        try {
+          const pos = await findSignaturePosition(buffer, cfg, { width: 595, height: 842 });
+          sigPositions.push({
+            x: Math.round(pos.x),
+            y: Math.round(pos.y),
+            page: cfg.page,
+            anchor: cfg.anchors?.[0] || 'unknown',
+          });
+        } catch {
+          sigPositions.push({ x: cfg.fallbackX || 0, y: cfg.fallbackY || 0, page: cfg.page, anchor: 'fallback' });
+        }
       }
     }
 
