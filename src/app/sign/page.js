@@ -83,7 +83,8 @@ function SignPageContent() {
 
   const handleSubmit = useCallback(async () => {
     const tpl = getTemplate(data.t);
-    const all = Array.from({ length: tpl.sigCount }, (_, i) => signatures[i]);
+    const effectiveSigCount = data.sigCount || tpl.sigCount;
+    const all = Array.from({ length: effectiveSigCount }, (_, i) => signatures[i]);
     if (all.some(s => !s)) { alert(t(lang, 'signatureRequired')); return; }
     setSubmitting(true);
     try {
@@ -118,6 +119,7 @@ function SignPageContent() {
   if (!data) return <LoadingView />;
 
   const template = getTemplate(data.t);
+  const effectiveSigCount = data.sigCount || template.sigCount;
 
   return (
     <main style={{minHeight:'100vh',background:'var(--bg)'}}>
@@ -142,11 +144,11 @@ function SignPageContent() {
         </div>
 
         <div className="mt-6 space-y-3">
-          {Array.from({ length: template.sigCount }, (_, i) => (
+          {Array.from({ length: effectiveSigCount }, (_, i) => (
             <SignaturePad
               key={i}
               onSignatureChange={handleSignatureChange(i)}
-              label={`${t(lang, 'signature')} ${i + 1} ${t(lang, 'of')} ${template.sigCount}`}
+              label={`${t(lang, 'signature')} ${i + 1} ${t(lang, 'of')} ${effectiveSigCount}`}
               t={(k) => t(lang, k)}
             />
           ))}

@@ -1,9 +1,11 @@
 'use client';
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { t } from '@/lib/i18n';
 import LanguageSwitcher from '@/components/LanguageSwitcher';
 
 export default function SuccessPage() {
+  const router = useRouter();
   const [lang, setLang] = useState('en');
   const [pdfBase64, setPdfBase64] = useState(null);
   const [filename, setFilename] = useState('');
@@ -20,6 +22,16 @@ export default function SuccessPage() {
     setEmailSent(es ? es === 'true' : null);
     setEmailError(sessionStorage.getItem('cgsi-pdf-emailError') || null);
   }, []);
+
+  const handleClose = () => {
+    // window.close() only works for windows opened by JS.
+    // Fall back to redirecting home.
+    if (window.opener) {
+      window.close();
+    } else {
+      router.push('/');
+    }
+  };
 
   const downloadPDF = () => {
     if (!pdfBase64) return;
@@ -85,7 +97,7 @@ export default function SuccessPage() {
             </button>
           )}
           <button
-            onClick={() => window.close()}
+            onClick={handleClose}
             className="btn-secondary"
             style={{marginTop:8,textDecoration:'none',display:'flex'}}
           >
