@@ -99,6 +99,7 @@ function SetupPageContent() {
       if (!pdfUrl) { setLoading(false); return; }
 
       try {
+        pdfjs.GlobalWorkerOptions.workerSrc = '/pdf-worker.min.js';
         const doc = await pdfjs.getDocument(pdfUrl).promise;
         if (cancelled) return;
         const page = await doc.getPage(pageNum + 1);
