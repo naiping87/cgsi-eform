@@ -85,7 +85,9 @@ export default function HomePage() {
       const res = await fetch('/api/store-pdf', { method: 'POST', body: fd });
       const data = await res.json();
       if (data.success) {
-        // Use boxes count for sigCount if configured, else fall back to template
+        // New upload = new customer. Clear old sig boxes so dealer sets fresh positions.
+        localStorage.removeItem(`cgsi-sig-boxes-${templateId}`);
+        setSigBoxes(null);
         const effectiveSigCount = sigBoxes ? sigBoxes.length : data.sigCount;
         setUploaded({ filename: file.name, sigCount: effectiveSigCount, sigPositions: data.sigPositions || [], blobUrl: data.blobUrl });
       } else alert(data.error);
@@ -123,6 +125,7 @@ export default function HomePage() {
   }, [link]);
 
   const reset = () => {
+    if (templateId) localStorage.removeItem(`cgsi-sig-boxes-${templateId}`);
     setLink('');
     setTemplateId(null);
     setUploaded(null);
