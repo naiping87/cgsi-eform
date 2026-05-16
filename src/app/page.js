@@ -210,11 +210,16 @@ export default function HomePage() {
                   <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:12}}>
                     <button
                       onClick={goToSetup}
+                      disabled={!uploaded}
                       className={sigBoxes ? 'btn-setup-done' : 'btn-setup'}
+                      style={!uploaded ? {opacity:0.5,pointerEvents:'none'} : {}}
                     >
                       {sigBoxes ? '✓ ' : '⊞ '}{t(lang, 'setupSigPosition')}
                       {sigBoxes && ` (${sigBoxes.filter(Boolean).length})`}
                     </button>
+                    {!uploaded && (
+                      <span style={{fontSize:10,color:'var(--text-muted)'}}>Upload a PDF first</span>
+                    )}
                   </div>
 
                   <label style={{fontSize:12,fontWeight:600,color:'var(--text-secondary)',display:'block',marginBottom:6}}>
