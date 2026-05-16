@@ -42,13 +42,12 @@ function SetupPageContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const templateId = searchParams.get('t') || searchParams.get('templateId');
-  const blobUrlParam = searchParams.get('blob');
   const template = templateId ? getTemplate(templateId) : null;
 
   const [lang, setLang] = useState('en');
-  const [blobUrl, setBlobUrl] = useState(blobUrlParam); // URL param is primary
+  const [blobUrl, setBlobUrl] = useState(null);
   const [pageNum, setPageNum] = useState(0);
-  const [totalPages, setTotalPages] = useState(0); // actual PDF page count
+  const [totalPages, setTotalPages] = useState(0);
   const [pageSize, setPageSize] = useState({ width: 612, height: 792 });
   const [loading, setLoading] = useState(true);
   const [pdfError, setPdfError] = useState('');
@@ -59,15 +58,13 @@ function SetupPageContent() {
   const canvasRef = useRef(null);
   const containerRef = useRef(null);
 
-  // Fallback: read blob URL from sessionStorage on mount
+  // Read blobUrl from sessionStorage on mount (set by goToSetup in page.js)
   useEffect(() => {
-    if (!blobUrl) {
-      try {
-        const stored = sessionStorage.getItem('cgsi-setup-blob');
-        if (stored) setBlobUrl(stored);
-      } catch {}
-    }
-  }, [blobUrl]);
+    try {
+      const stored = sessionStorage.getItem('cgsi-setup-blob');
+      if (stored) setBlobUrl(stored);
+    } catch {}
+  }, []);
 
   useEffect(() => {
     const saved = localStorage.getItem('cgsi-lang');
@@ -95,7 +92,6 @@ function SetupPageContent() {
     setPdfError('');
     ensurePdfjs().then(async (pdfjs) => {
       if (cancelled) return;
-      // Use dealer's uploaded PDF if available, otherwise fall back to blank template
       const pdfUrl = blobUrl || PDF_FILES[templateId];
       if (!pdfUrl) { setLoading(false); return; }
       try {
@@ -103,7 +99,6 @@ function SetupPageContent() {
         const doc = await pdfjs.getDocument(pdfUrl).promise;
         if (cancelled) return;
         setTotalPages(doc.numPages);
-        // Use effective page number (pageNum is stale closure)
         const effectivePage = pageNum < doc.numPages ? pageNum : 0;
         if (effectivePage !== pageNum) setPageNum(effectivePage);
         const page = await doc.getPage(effectivePage + 1);
@@ -150,7 +145,6 @@ function SetupPageContent() {
 
   // ---- Drawing handlers ----
   const handlePointerDown = useCallback((e) => {
-    // On touch devices, only draw when drawMode is ON
     if (e.touches && !drawMode) return;
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -213,7 +207,8 @@ function SetupPageContent() {
     const ctx = overlay.getContext('2d');
     ctx.clearRect(0, 0, overlay.width, overlay.height);
 
-    validBoxes.forEach((box, i) => {
+    const visibleBoxes = totalPages > 0 ? boxes.filter(b => b && b.page < totalPages) : boxes;
+    visibleBoxes.forEach((box, i) => {
       if (!box || box.page !== pageNum) return;
       const { sx: x1, sy: y1 } = pdfToScreen(box.x, box.y + box.height);
       const { sx: x2, sy: y2 } = pdfToScreen(box.x + box.width, box.y);
@@ -240,7 +235,7 @@ function SetupPageContent() {
       ctx.lineWidth = 2;
       ctx.strokeRect(sx1, sy1, sx2 - sx1, sy2 - sy1);
     }
-  }, [validBoxes, drawing, pageNum, pdfToScreen]);
+  }, [boxes, drawing, pageNum, pdfToScreen, totalPages]);
 
   useEffect(() => { redrawOverlay(); }, [redrawOverlay]);
   useEffect(() => { if (!loading && canvasRef.current) redrawOverlay(); }, [loading, redrawOverlay]);
@@ -255,8 +250,6 @@ function SetupPageContent() {
   }
 
   const pages = Array.from({ length: totalPages || 1 }, (_, i) => i);
-  // Only show boxes that exist on pages that are actually in the loaded PDF
-  const validBoxes = totalPages > 0 ? boxes.filter(b => b && b.page < totalPages) : boxes;
   const isSideBySide = !isMobile;
 
   return (
@@ -266,7 +259,6 @@ function SetupPageContent() {
 
         {/* PDF Canvas Area */}
         <div style={{flex:1,overflow:'auto',background:'#525659',position:'relative',padding:16,minHeight:isSideBySide?0:'60vh'}}>
-          {/* Toolbar */}
           <div style={{marginBottom:10,display:'flex',gap:6,alignItems:'center',flexWrap:'wrap'}}>
             {pages.map(p => (
               <button key={p} onClick={() => setPageNum(p)}
@@ -277,7 +269,6 @@ function SetupPageContent() {
               </button>
             ))}
 
-            {/* Draw Mode Toggle */}
             <button
               onClick={() => setDrawMode(m => !m)}
               style={{
@@ -345,14 +336,13 @@ function SetupPageContent() {
             {t(lang, 'clickDragToDraw')}
           </p>
 
-          {validBoxes.length === 0 && (
+          {(totalPages > 0 ? boxes.filter(b => b && b.page < totalPages) : boxes).length === 0 && (
             <p style={{fontSize:11,color:'var(--text-muted)',textAlign:'center',padding:20}}>
               {t(lang, 'sigNotPositioned')}
             </p>
           )}
 
           {boxes.map((box, i) => {
-            // Hide boxes on pages that don't exist in the loaded PDF
             if (totalPages > 0 && box && box.page >= totalPages) return null;
             return (
             <div key={i} style={{marginBottom:6,padding:8,borderRadius:8,
