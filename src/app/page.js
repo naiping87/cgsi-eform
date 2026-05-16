@@ -109,6 +109,9 @@ export default function HomePage() {
     if (sigBoxes) payload.sb = sigBoxes;
     const base64 = encodeBase64(JSON.stringify(payload));
     setLink(`${window.location.origin}/sign?d=${encodeURIComponent(base64)}`);
+    // Sig boxes are embedded in the link — clear from localStorage for next customer
+    localStorage.removeItem(`cgsi-sig-boxes-${templateId}`);
+    setSigBoxes(null);
   }, [templateId, uploaded, recipientEmails, sigBoxes]);
 
   const copyLink = useCallback(() => {
@@ -123,6 +126,7 @@ export default function HomePage() {
     setLink('');
     setTemplateId(null);
     setUploaded(null);
+    setSigBoxes(null);
     if (fileRef.current) fileRef.current.value = '';
   };
 
