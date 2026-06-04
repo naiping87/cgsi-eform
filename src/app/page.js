@@ -309,7 +309,7 @@ export default function HomePage() {
               ☕ Enjoying this tool?<br/>Scan to buy me a coffee
             </p>
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/qr-code.png" alt="TNG QR" style={{width:160, height:160, borderRadius:8, display:'block', margin:'0 auto'}} />
+            <img src="/qr-code.png" alt="TNG QR" style={{width:200, height:'auto', borderRadius:8, display:'block', margin:'0 auto'}} />
             <p style={{fontSize:10, color:'var(--text-muted)', marginTop:6}}>Touch &apos;n Go eWallet</p>
           </div>
         </div>
