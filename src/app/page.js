@@ -313,6 +313,11 @@ export default function HomePage() {
             <p style={{fontSize:10, color:'var(--text-muted)', marginTop:6}}>Touch &apos;n Go eWallet</p>
           </div>
         </div>
+
+        {/* Disclaimer */}
+        <p style={{marginTop:20, fontSize:9, color:'var(--text-muted)', textAlign:'center', lineHeight:1.6, opacity:0.5, maxWidth:360, margin:'20px auto 0'}}>
+          Disclaimer: This tool is provided &ldquo;as is&rdquo; without warranty of any kind. The creator assumes no responsibility or liability for any errors, omissions, or damages arising from its use. Users are solely responsible for verifying the accuracy of all form data and signatures before submission.
+        </p>
       </div>
     </main>
   );
