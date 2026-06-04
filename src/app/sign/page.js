@@ -147,7 +147,11 @@ function SignPageContent() {
           />
         </div>
 
-        <div className="mt-6">
+        <div className="mt-6 space-y-3">
+          <label className="checkbox-wrap">
+            <input type="checkbox" id="pdpa-consent" required />
+            <span className="checkbox-label">{t(lang, 'pdpaConsent')}</span>
+          </label>
           <label className="checkbox-wrap">
             <input type="checkbox" required />
             <span className="checkbox-label">{t(lang, 'confirmInfo')}</span>
