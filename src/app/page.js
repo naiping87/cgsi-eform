@@ -301,6 +301,18 @@ export default function HomePage() {
             </div>
           </div>
         )}
+
+        {/* Donation QR */}
+        <div style={{marginTop:36, textAlign:'center', opacity:0.7}}>
+          <div className="card" style={{display:'inline-block', maxWidth:240, padding:'14px 18px'}}>
+            <p style={{fontSize:11, color:'var(--text-secondary)', marginBottom:8}}>
+              ☕ Enjoying this tool?<br/>Scan to buy me a coffee
+            </p>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/qr-code.png" alt="TNG QR" style={{width:160, height:160, borderRadius:8, display:'block', margin:'0 auto'}} />
+            <p style={{fontSize:10, color:'var(--text-muted)', marginTop:6}}>Touch &apos;n Go eWallet</p>
+          </div>
+        </div>
       </div>
     </main>
   );
