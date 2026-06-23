@@ -5,7 +5,7 @@ import { sendPDFByEmail } from '@/lib/mailer';
 export async function POST(request) {
   try {
     const body = await request.json();
-    const { templateId, formData, signatures, blobUrl, emails, sigBoxes } = body;
+    const { templateId, formData, signatures, blobUrl, emails, sigBoxes, fileName } = body;
 
     const sigBuffers = (signatures || []).map(sig => {
       if (!sig) return null;
@@ -20,7 +20,13 @@ export async function POST(request) {
       if (!res.ok) throw new Error(`Failed to fetch PDF: ${res.status}`);
       const buffer = Buffer.from(await res.arrayBuffer());
       pdfBuffer = await addSignaturesToPdf(buffer, templateId, sigBuffers, sigBoxes);
-      filename = 'signed_form.pdf';
+      // Use original filename if available, so dealer can easily identify which customer's form
+      if (fileName) {
+        const baseName = fileName.replace(/\.pdf$/i, '').replace(/[<>:"/\\|?*]/g, '').trim() || 'form';
+        filename = `signed_${baseName}.pdf`;
+      } else {
+        filename = 'signed_form.pdf';
+      }
     } else if (templateId && formData) {
       pdfBuffer = await generatePDF(templateId, formData, sigBuffers, { sigBoxes });
       filename = getPDFFilename(templateId, formData);

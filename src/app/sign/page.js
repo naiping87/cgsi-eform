@@ -97,6 +97,7 @@ function SignPageContent() {
           signatures: processed,
           emails: data.e || '',
           sigBoxes: data.sb || null,
+          fileName: data.fn || '',
         }),
       });
       if (res.ok) {

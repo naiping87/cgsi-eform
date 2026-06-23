@@ -19,6 +19,8 @@ export default function HomePage() {
   const [uploading, setUploading] = useState(false);
   const [uploaded, setUploaded] = useState(null);
   const [recipientEmails, setRecipientEmails] = useState('');
+  const [onboardEmail, setOnboardEmail] = useState('');
+  const [onboardLink, setOnboardLink] = useState('');
   const [sigBoxes, setSigBoxes] = useState(null);
   const fileRef = useRef(null);
 
@@ -106,6 +108,7 @@ export default function HomePage() {
       sigCount: effectiveSigCount,
       blobUrl: uploaded.blobUrl,
       x: Date.now() + SEVEN_DAYS,
+      fn: uploaded.filename, // original filename for email attachment naming
     };
     if (recipients) payload.e = recipients;
     if (sigBoxes) payload.sb = sigBoxes;
@@ -151,6 +154,72 @@ export default function HomePage() {
               style={{background:'none',border:'1px solid var(--border)',color:'var(--text-muted)',fontSize:11,padding:'4px 10px',borderRadius:4,cursor:'pointer',fontFamily:'var(--font)'}}>
               Logout
             </button>
+          </div>
+        </div>
+
+        {/* Customer Onboarding Card */}
+        <div className="card-highlight" style={{ marginBottom: 24 }}>
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 16, flexWrap: 'wrap' }}>
+            <div style={{ flex: 1, minWidth: 200 }}>
+              <h2 style={{ fontSize: 16, fontWeight: 700, color: '#f1f5f9', marginBottom: 4 }}>
+                📋 Customer Onboarding
+              </h2>
+              <p style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 12 }}>
+                Collect client details, IC photos & income documents — no PDF needed.
+              </p>
+              <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end', flexWrap: 'wrap' }}>
+                <div>
+                  <label style={{ fontSize: 11, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>Your email</label>
+                  <input
+                    type="email"
+                    value={onboardEmail}
+                    onChange={(e) => setOnboardEmail(e.target.value)}
+                    placeholder="dealer@example.com"
+                    style={{
+                      width: 200, padding: '8px 12px', borderRadius: 6,
+                      border: '1px solid var(--border)', background: 'var(--bg-card)',
+                      color: '#f1f5f9', fontSize: 12, fontFamily: 'var(--font)', outline: 'none',
+                    }}
+                  />
+                </div>
+                <button
+                  onClick={() => {
+                    if (!onboardEmail) return;
+                    const payload = btoa(JSON.stringify({ e: onboardEmail }));
+                    const link = `${window.location.origin}/onboard?d=${encodeURIComponent(payload)}`;
+                    setOnboardLink(link);
+                  }}
+                  style={{
+                    padding: '9px 18px', borderRadius: 6, border: 'none',
+                    background: 'var(--accent)', color: '#fff', fontSize: 13, fontWeight: 600,
+                    cursor: 'pointer', fontFamily: 'var(--font)', whiteSpace: 'nowrap',
+                  }}
+                >
+                  Generate Link
+                </button>
+              </div>
+              {onboardLink && (
+                <div style={{ marginTop: 12 }}>
+                  <div style={{
+                    padding: '10px 14px', borderRadius: 6, border: '1px solid var(--border)',
+                    background: 'var(--bg-card)', fontSize: 11, color: 'var(--accent)',
+                    wordBreak: 'break-all', fontFamily: 'var(--font-mono)',
+                  }}>
+                    {onboardLink}
+                  </div>
+                  <button
+                    onClick={() => { navigator.clipboard.writeText(onboardLink); }}
+                    style={{
+                      marginTop: 8, padding: '6px 14px', borderRadius: 4,
+                      border: '1px solid var(--success)', background: 'transparent',
+                      color: 'var(--success)', fontSize: 12, cursor: 'pointer', fontFamily: 'var(--font)',
+                    }}
+                  >
+                    📋 Copy Link
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
