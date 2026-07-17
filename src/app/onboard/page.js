@@ -334,6 +334,10 @@ function OnboardContent() {
                 <p style={{ fontSize: 12, color: '#f1f5f9' }}>{files.incomeDoc ? '✅ Income Doc' : '—'}</p>
               </div>
               {error && <div style={{ ...cardStyle, borderColor: 'var(--danger)', background: 'rgba(239,68,68,0.06)' }}><p style={{ fontSize: 12, color: 'var(--danger)' }}>{error}</p></div>}
+              <div style={{ ...cardStyle, marginTop: 8 }}>
+                <p style={{ fontSize: 10, color: 'var(--text-muted)', marginBottom: 4 }}>🐛 Debug — formData:</p>
+                <pre style={{ fontSize: 10, color: 'var(--text-secondary)', whiteSpace: 'pre-wrap', wordBreak: 'break-all', margin: 0, fontFamily: 'monospace' }}>{JSON.stringify(formData, null, 2)}</pre>
+              </div>
             </div>
           )}
         </div>
