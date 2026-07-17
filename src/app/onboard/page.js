@@ -304,7 +304,7 @@ function OnboardContent() {
                 {['fullName', 'maritalStatus', 'email', 'mobileNo', 'mailingAddress'].map((k) => (
                   <div key={k} style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', fontSize: 12 }}>
                     <span style={{ color: 'var(--text-muted)' }}>{s(k)}</span>
-                    <span style={{ color: '#f1f5f9', fontWeight: 500 }}>{formData[k] != null && String(formData[k]).trim() !== '' ? formData[k] : '—'}</span>
+                    <span style={{ color: '#f1f5f9', fontWeight: 500 }}>{formData[k] || '—'}</span>
                   </div>
                 ))}
                 <div style={{ borderTop: '1px solid var(--border)', marginTop: 8, paddingTop: 8 }}>
@@ -312,7 +312,7 @@ function OnboardContent() {
                   {['emergencyName', 'emergencyMobile', 'emergencyRelation'].map((k) => (
                     <div key={k} style={{ display: 'flex', justifyContent: 'space-between', padding: '2px 0', fontSize: 12 }}>
                       <span style={{ color: 'var(--text-muted)' }}>{s(k)}</span>
-                      <span style={{ color: '#f1f5f9' }}>{formData[k] != null && String(formData[k]).trim() !== '' ? formData[k] : '—'}</span>
+                      <span style={{ color: '#f1f5f9' }}>{formData[k] || '—'}</span>
                     </div>
                   ))}
                 </div>
@@ -322,7 +322,7 @@ function OnboardContent() {
                 {['company', 'occupation', 'natureOfBiz', 'yearsEmployed', 'officeAddress', 'officePhone', 'incomeTax'].map((k) => (
                   <div key={k} style={{ display: 'flex', justifyContent: 'space-between', padding: '2px 0', fontSize: 12 }}>
                     <span style={{ color: 'var(--text-muted)' }}>{s(k)}</span>
-                    <span style={{ color: '#f1f5f9' }}>{formData[k] != null && String(formData[k]).trim() !== '' ? formData[k] + ' [' + k + '=' + formData[k] + ']' : '— [' + k + '=falsy]'}</span>
+                    <span style={{ color: '#f1f5f9' }}>{formData[k] || '—'}</span>
                   </div>
                 ))}
               </div>
@@ -334,10 +334,7 @@ function OnboardContent() {
                 <p style={{ fontSize: 12, color: '#f1f5f9' }}>{files.incomeDoc ? '✅ Income Doc' : '—'}</p>
               </div>
               {error && <div style={{ ...cardStyle, borderColor: 'var(--danger)', background: 'rgba(239,68,68,0.06)' }}><p style={{ fontSize: 12, color: 'var(--danger)' }}>{error}</p></div>}
-              <div style={{ ...cardStyle, marginTop: 8 }}>
-                <p style={{ fontSize: 10, color: 'var(--text-muted)', marginBottom: 4 }}>🐛 Debug — formData:</p>
-                <pre style={{ fontSize: 10, color: 'var(--text-secondary)', whiteSpace: 'pre-wrap', wordBreak: 'break-all', margin: 0, fontFamily: 'monospace' }}>{JSON.stringify(formData, null, 2)}</pre>
-              </div>
+
             </div>
           )}
         </div>

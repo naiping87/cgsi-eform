@@ -96,13 +96,13 @@ export async function POST(request) {
     wl('Relationship', formData?.emergencyRelation);
 
     sec('Employment');
-    wl('Company Name', formData?.companyName, true);
+    wl('Company Name', formData?.company, true);
     wl('Occupation', formData?.occupation);
     wl('Nature of Business', formData?.natureOfBiz);
     wl('Years in Employment', formData?.yearsEmployed);
     wl('Office Address', formData?.officeAddress);
     wl('Office Phone', formData?.officePhone);
-    wl('Income Tax Number', formData?.incomeTaxNo);
+    wl('Income Tax Number', formData?.incomeTax);
 
     const infoBuf = Buffer.from(await infoDoc.save());
 
