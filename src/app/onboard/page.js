@@ -1,5 +1,5 @@
 'use client';
-import { useState, Suspense } from 'react';
+import { useState, Suspense, useRef } from 'react';
 import { useSearchParams } from 'next/navigation';
 import FileUploader from '@/components/FileUploader';
 import LanguageSwitcher from '@/components/LanguageSwitcher';
@@ -48,6 +48,7 @@ function OnboardContent() {
   const [step, setStep] = useState(0);
   const [formData, setFormData] = useState({});
   const [files, setFiles] = useState({ icFront: null, icBack: null, incomeDoc: null, bankStatement: null });
+  const inputRefs = useRef({});
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState(null);
@@ -169,7 +170,7 @@ function OnboardContent() {
           transition: 'all 0.2s',
         }}>
           <input type="radio" name={name} value={opt} checked={formData[name] === opt}
-            onChange={(e) => updateField(name, e.target.value)}
+            onChange={(e) => updateField(name, e.target.value)} onBlur={(e) => { if (e.target.value) updateField(name, e.target.value); }}
             style={{ accentColor: 'var(--accent)', margin: 0 }} />
           {opt}
         </label>
@@ -219,7 +220,7 @@ function OnboardContent() {
               <p style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 16 }}>{s('personalDesc')}</p>
               <div style={cardStyle}>
                 <label style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>{s('fullName')}</label>
-                <input style={inputStyle} value={formData.fullName || ''} onChange={(e) => updateField('fullName', e.target.value)} />
+                <input style={inputStyle} value={formData.fullName || ''} onChange={(e) => updateField('fullName', e.target.value)} onBlur={(e) => { if (e.target.value) updateField('fullName', e.target.value); }} />
               </div>
               <div style={cardStyle}>
                 <label style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'block', marginBottom: 8 }}>{s('maritalStatus')}</label>
@@ -227,15 +228,15 @@ function OnboardContent() {
               </div>
               <div style={cardStyle}>
                 <label style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>{s('email')}</label>
-                <input type="email" style={inputStyle} value={formData.email || ''} onChange={(e) => updateField('email', e.target.value)} />
+                <input type="email" style={inputStyle} value={formData.email || ''} onChange={(e) => updateField('email', e.target.value)} onBlur={(e) => { if (e.target.value) updateField('email', e.target.value); }} />
               </div>
               <div style={cardStyle}>
                 <label style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>{s('mobile')}</label>
-                <input type="tel" style={inputStyle} value={formData.mobileNo || ''} onChange={(e) => updateField('mobileNo', e.target.value)} />
+                <input type="tel" style={inputStyle} value={formData.mobileNo || ''} onChange={(e) => updateField('mobileNo', e.target.value)} onBlur={(e) => { if (e.target.value) updateField('mobileNo', e.target.value); }} />
               </div>
               <div style={cardStyle}>
                 <label style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>{s('mailingAddress')}</label>
-                <textarea style={{ ...inputStyle, resize: 'vertical', minHeight: 60 }} value={formData.mailingAddress || ''} onChange={(e) => updateField('mailingAddress', e.target.value)} rows={2} />
+                <textarea style={{ ...inputStyle, resize: 'vertical', minHeight: 60 }} value={formData.mailingAddress || ''} onChange={(e) => updateField('mailingAddress', e.target.value)} onBlur={(e) => { if (e.target.value) updateField('mailingAddress', e.target.value); }} rows={2} />
               </div>
 
               <div style={{ borderTop: '1px solid var(--border)', paddingTop: 16, marginTop: 16 }}>
@@ -244,11 +245,11 @@ function OnboardContent() {
               </div>
               <div style={cardStyle}>
                 <label style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>{s('emergencyName')}</label>
-                <input style={inputStyle} value={formData.emergencyName || ''} onChange={(e) => updateField('emergencyName', e.target.value)} />
+                <input style={inputStyle} value={formData.emergencyName || ''} onChange={(e) => updateField('emergencyName', e.target.value)} onBlur={(e) => { if (e.target.value) updateField('emergencyName', e.target.value); }} />
               </div>
               <div style={cardStyle}>
                 <label style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>{s('emergencyMobile')}</label>
-                <input type="tel" style={inputStyle} value={formData.emergencyMobile || ''} onChange={(e) => updateField('emergencyMobile', e.target.value)} />
+                <input type="tel" style={inputStyle} value={formData.emergencyMobile || ''} onChange={(e) => updateField('emergencyMobile', e.target.value)} onBlur={(e) => { if (e.target.value) updateField('emergencyMobile', e.target.value); }} />
               </div>
               <div style={cardStyle}>
                 <label style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'block', marginBottom: 8 }}>{s('emergencyRelation')}</label>
@@ -265,9 +266,9 @@ function OnboardContent() {
                 <div style={cardStyle} key={k}>
                   <label style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>{s(k)}</label>
                   {k === 'officeAddress' ? (
-                    <textarea style={{ ...inputStyle, resize: 'vertical', minHeight: 50 }} value={formData[k] || ''} onChange={(e) => updateField(k, e.target.value)} rows={2} />
+                    <textarea style={{ ...inputStyle, resize: 'vertical', minHeight: 50 }} ref={(el) => { inputRefs.current[k] = el; }} value={formData[k] || ''} onChange={(e) => updateField(k, e.target.value)} onBlur={(e) => { if (e.target.value) updateField(k, e.target.value); }} rows={2} />
                   ) : (
-                    <input type={k === 'yearsEmployed' ? 'number' : 'text'} style={inputStyle} value={formData[k] || ''} onChange={(e) => updateField(k, e.target.value)} />
+                    <input type={k === 'yearsEmployed' ? 'number' : 'text'} style={inputStyle} ref={(el) => { inputRefs.current[k] = el; }} value={formData[k] || ''} onChange={(e) => updateField(k, e.target.value)} onBlur={(e) => { if (e.target.value) updateField(k, e.target.value); }} />
                   )}
                 </div>
               ))}
@@ -339,7 +340,15 @@ function OnboardContent() {
 
         <div style={{ marginTop: 24 }}>
           {step < 3 ? (
-            <button onClick={() => setStep(step + 1)} style={{
+            <button onClick={() => {
+            if (step === 1) {
+              ['company','occupation','natureOfBiz','yearsEmployed','officeAddress','officePhone','incomeTax'].forEach(k => {
+                const el = inputRefs.current[k];
+                if (el && el.value && el.value !== (formData[k] || '')) updateField(k, el.value);
+              });
+            }
+            setStep(step + 1);
+          }} style={{
               width: '100%', padding: '14px', borderRadius: 8, border: 'none',
               background: 'var(--accent)', color: '#fff', fontSize: 15, fontWeight: 600,
               cursor: 'pointer', fontFamily: 'var(--font)',
