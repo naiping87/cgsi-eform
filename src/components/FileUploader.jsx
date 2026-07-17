@@ -1,7 +1,7 @@
 'use client';
 import { useState, useRef } from 'react';
 
-export default function FileUploader({ label, accept = 'image/*,.pdf', maxSizeMB = 10, onFile, lang = 'en' }) {
+export default function FileUploader({ label, accept = 'image/*,.pdf', maxSizeMB = 10, onFile, lang = 'en', hint }) {
   const [dragOver, setDragOver] = useState(false);
   const [preview, setPreview] = useState(null);
   const [error, setError] = useState(null);
@@ -72,6 +72,7 @@ export default function FileUploader({ label, accept = 'image/*,.pdf', maxSizeMB
         <input ref={inputRef} type="file" accept={accept} onChange={(e) => handleFile(e.target.files[0])} style={{ display: 'none' }} />
       </div>
       {error && <p style={styles.error}>{error}</p>}
+      {hint && <p style={{ fontSize: 12, color: 'var(--accent)', marginTop: 6, fontWeight: 500 }}>{hint}</p>}
     </div>
   );
 }

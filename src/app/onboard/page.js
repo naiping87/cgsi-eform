@@ -107,6 +107,7 @@ function OnboardContent() {
         incomeDoc: 'Income Document',
         incomeExample: 'e.g., Payslip, EPF Statement, Notice of Assessment (NOA), Income Tax Form B / BE',
         review: 'Review & Submit', reviewDesc: 'Please review before submitting.',
+        pdfHint: '📄 You can also upload PDF files (e.g., bank statements or EPF downloaded as PDF)',
       },
       zh: { step1: '个人信息', step2: '工作资料', step3: '上传文件', step4: '确认',
         continue: '继续', back: '返回', submit: '提交', close: '关闭页面',
@@ -128,6 +129,7 @@ function OnboardContent() {
         incomeDoc: '收入证明',
         incomeExample: '例：工资单, 公积金结单 (EPF), 估税通知 (NOA), 报税表 B / BE',
         review: '确认提交', reviewDesc: '提交前请仔细检查。',
+        pdfHint: '📄 也支持上传 PDF 文件（如银行下载的月结单、EPF 公积金结单）',
       },
       bm: { step1: 'Peribadi', step2: 'Pekerjaan', step3: 'Dokumen', step4: 'Sahkan',
         continue: 'Teruskan', back: 'Kembali', submit: 'Hantar', close: 'Tutup Halaman',
@@ -149,6 +151,7 @@ function OnboardContent() {
         incomeDoc: 'Dokumen Pendapatan',
         incomeExample: 'cth: Slip Gaji, Penyata EPF, Notis Taksiran (NOA), Borang Cukai B / BE',
         review: 'Semak & Hantar', reviewDesc: 'Sila semak sebelum menghantar.',
+        pdfHint: '📄 Fail PDF juga diterima (cth: penyata bank atau EPF yang dimuat turun)',
       },
     };
     return (map[lang] || map.en)[k] || k;
@@ -281,12 +284,12 @@ function OnboardContent() {
                 </div>
               ))}
               <div style={{ ...cardStyle, padding: 12 }}>
-                <FileUploader label={s('bankStatement')} accept="image/*,.pdf" onFile={(f) => updateFile('bankStatement', f)} lang={lang} />
-                <p style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 6 }}>{s('bankExample')}</p>
+                <FileUploader label={s('bankStatement')} accept="image/*,.pdf" onFile={(f) => updateFile('bankStatement', f)} hint={s('pdfHint')} lang={lang} />
+                <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 6, lineHeight: 1.5 }}>{s('bankExample')}</p>
               </div>
               <div style={{ ...cardStyle, padding: 12 }}>
-                <FileUploader label={s('incomeDoc')} accept="image/*,.pdf" onFile={(f) => updateFile('incomeDoc', f)} lang={lang} />
-                <p style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 6 }}>{s('incomeExample')}</p>
+                <FileUploader label={s('incomeDoc')} accept="image/*,.pdf" onFile={(f) => updateFile('incomeDoc', f)} hint={s('pdfHint')} lang={lang} />
+                <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 6, lineHeight: 1.5 }}>{s('incomeExample')}</p>
               </div>
             </div>
           )}
