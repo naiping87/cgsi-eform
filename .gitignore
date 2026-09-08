@@ -49,3 +49,4 @@ scripts/fonts/*
 
 # Superpowers session artifacts
 .superpowers/
+.env*
