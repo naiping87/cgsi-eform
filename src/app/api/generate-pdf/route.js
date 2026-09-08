@@ -1,11 +1,28 @@
 import { NextResponse } from 'next/server';
 import { generatePDF, getPDFFilename, addSignaturesToPdf } from '@/lib/pdf-generator';
 import { sendPDFByEmail } from '@/lib/mailer';
+import { verifyData } from '@/lib/auth';
 
 export async function POST(request) {
   try {
     const body = await request.json();
-    const { templateId, formData, signatures, blobUrl, emails, sigBoxes, fileName } = body;
+    const { token, signatures } = body;
+
+    // Only trust fields from a server-signed link, so a client cannot tamper with
+    // the recipient emails or form data embedded in the link.
+    const payload = await verifyData(token);
+    if (!payload) return NextResponse.json({ error: 'Invalid sign link' }, { status: 401 });
+    if (payload.x && Date.now() > payload.x) {
+      return NextResponse.json({ error: 'Sign link expired' }, { status: 410 });
+    }
+
+    const templateId = payload.t;
+    const formData = payload.f || {};
+    const blobUrl = payload.blobUrl;
+    const emails = payload.e || '';
+    const sigBoxes = payload.sb || null;
+    const fileName = payload.fn || '';
+    const positions = payload.p || {};
 
     const sigBuffers = (signatures || []).map(sig => {
       if (!sig) return null;
@@ -28,7 +45,7 @@ export async function POST(request) {
         filename = 'signed_form.pdf';
       }
     } else if (templateId && formData) {
-      pdfBuffer = await generatePDF(templateId, formData, sigBuffers, { sigBoxes });
+      pdfBuffer = await generatePDF(templateId, formData, sigBuffers, { sigBoxes, positions });
       filename = getPDFFilename(templateId, formData);
     } else {
       return NextResponse.json({ error: 'Missing PDF data' }, { status: 400 });

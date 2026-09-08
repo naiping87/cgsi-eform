@@ -3,7 +3,9 @@ const COOKIE_NAME = 'cgsi-auth';
 const SESSION_DAYS = 1;
 
 function getSecret() {
-  return process.env.LOGIN_PASSWORD || 'change-me';
+  // Prefer a dedicated signing secret; fall back to the login password for
+  // backward compatibility, then to a dev-only default when neither is set.
+  return process.env.AUTH_SECRET || process.env.LOGIN_PASSWORD || 'change-me';
 }
 
 function base64url(buf) {
@@ -35,34 +37,44 @@ async function hmac(key, data) {
   return new Uint8Array(sig);
 }
 
-// Create a signed token: base64url(payload).base64url(signature)
-export async function createToken() {
-  const payload = JSON.stringify({ exp: Date.now() + SESSION_DAYS * 24 * 60 * 60 * 1000 });
-  const payloadB64 = base64url(payload);
+// Sign an arbitrary object: base64url(utf8(JSON)).base64url(hmac)
+// The JSON is UTF-8 encoded so non-ASCII values (names, addresses) are safe.
+export async function signData(obj) {
+  const payloadBytes = new TextEncoder().encode(JSON.stringify(obj));
+  const payloadB64 = base64url(payloadBytes);
   const sig = await hmac(getSecret(), payloadB64);
   return `${payloadB64}.${base64url(sig)}`;
 }
 
-// Verify a signed token. Returns true if valid and not expired.
-export async function verifyToken(token) {
+// Verify a signed token. Returns the decrypted payload object, or null if invalid.
+export async function verifyData(token) {
   try {
     const [payloadB64, sigB64] = token.split('.');
-    if (!payloadB64 || !sigB64) return false;
+    if (!payloadB64 || !sigB64) return null;
 
     const expectedSig = await hmac(getSecret(), payloadB64);
     const actualSig = parseBase64url(sigB64);
 
     // Constant-time comparison
-    if (expectedSig.length !== actualSig.length) return false;
+    if (expectedSig.length !== actualSig.length) return null;
     let diff = 0;
     for (let i = 0; i < expectedSig.length; i++) diff |= expectedSig[i] ^ actualSig[i];
-    if (diff !== 0) return false;
+    if (diff !== 0) return null;
 
-    const payload = JSON.parse(new TextDecoder().decode(parseBase64url(payloadB64)));
-    return payload.exp > Date.now();
-  } catch {
-    return false;
-  }
+    return JSON.parse(new TextDecoder().decode(parseBase64url(payloadB64)));
+  } catch { return null; }
+}
+
+// Create a signed auth-session token.
+export async function createToken() {
+  return signData({ exp: Date.now() + SESSION_DAYS * 24 * 60 * 60 * 1000 });
+}
+
+// Verify a signed auth-session token. Returns true if valid and not expired.
+export async function verifyToken(token) {
+  const payload = await verifyData(token);
+  if (!payload) return false;
+  return typeof payload.exp === 'number' && payload.exp > Date.now();
 }
 
 export function getAuthCookie(token) {

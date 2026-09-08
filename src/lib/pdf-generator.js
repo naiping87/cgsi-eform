@@ -77,13 +77,26 @@ export async function generatePDF(templateId, formData, signatureBuffers, option
       const page = pages[pageIdx];
       if (!page) continue;
 
-      page.drawText(displayValue, {
-        x, y,
-        size: sz,
-        font,
-        color: rgb(0, 0, 0),
-        maxWidth: o.maxWidth ?? pos.maxWidth ?? 400,
-      });
+      const maxWidth = o.maxWidth ?? pos.maxWidth ?? 400;
+      const lineHeight = Math.round(sz * 1.4); // ~1.4x body size, non-cramped
+      // Render multi-line / overflowing values line-by-line so they never stack
+      // on one baseline or collide with the field below.
+      const lines = [];
+      for (const rawLine of String(displayValue).split('\n')) {
+        const words = rawLine.split(/\s+/).filter(Boolean);
+        let cur = '';
+        for (const word of words) {
+          const cand = cur ? cur + ' ' + word : word;
+          if (!cur || font.widthOfTextAtSize(cand, sz) <= maxWidth) cur = cand;
+          else { lines.push(cur); cur = word; }
+        }
+        if (cur) lines.push(cur);
+      }
+      let ty = y;
+      for (const line of lines.length ? lines : ['']) {
+        page.drawText(line, { x, y: ty, size: sz, font, color: rgb(0, 0, 0) });
+        ty -= lineHeight;
+      }
     }
   }
 

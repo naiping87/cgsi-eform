@@ -127,16 +127,26 @@ function FillPageContent() {
     localStorage.setItem(`cgsi-pos-${templateId}`, JSON.stringify(newPos));
   }, [positions, templateId]);
 
-  const generateLink = useCallback(() => {
+  const generateLink = useCallback(async () => {
     const payload = {
       t: templateId,
       f: formData,
       p: positions,
       x: Date.now() + 7 * 24 * 60 * 60 * 1000,
     };
-    const base64 = btoa(String.fromCharCode(...new TextEncoder().encode(JSON.stringify(payload))));
-    const link = `${window.location.origin}/sign?d=${encodeURIComponent(base64)}`;
-    navigator.clipboard.writeText(link).then(() => alert('Link copied!'));
+    try {
+      const res = await fetch('/api/create-sign-link', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ payload }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to create sign link');
+      const link = `${window.location.origin}/sign?d=${encodeURIComponent(data.token)}`;
+      navigator.clipboard.writeText(link).then(() => alert('Link copied!'));
+    } catch (err) {
+      alert('Failed to generate link: ' + err.message);
+    }
   }, [templateId, formData, positions]);
 
   if (!template) {

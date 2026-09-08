@@ -5,7 +5,7 @@ import { verifyToken, COOKIE_NAME } from '@/lib/auth';
 const PROTECTED = ['/', '/setup', '/fill'];
 
 // API routes that require authentication
-const PROTECTED_API = ['/api/store-pdf'];
+const PROTECTED_API = ['/api/store-pdf', '/api/create-sign-link'];
 
 export async function middleware(request) {
   const { pathname } = request.nextUrl;
@@ -38,5 +38,6 @@ export const config = {
     '/setup/:path*',
     '/fill/:path*',
     '/api/store-pdf/:path*',
+    '/api/create-sign-link/:path*',
   ],
 };

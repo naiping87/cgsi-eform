@@ -16,7 +16,15 @@ const SignaturePad = dynamic(() => import('@/components/SignaturePad'), {
   ),
 });
 
-const decodeBase64 = (s) => new TextDecoder().decode(Uint8Array.from(atob(s), c => c.charCodeAt(0)));
+// `d` is a server-signed token "payloadB64.sigB64" (base64url). Decode the payload
+// part for display only; the full token is sent back so the server can verify it.
+const decodeToken = (token) => {
+  const [payloadB64] = token.split('.');
+  if (!payloadB64) return null;
+  const b64 = payloadB64.replace(/-/g, '+').replace(/_/g, '/');
+  const padded = b64 + '='.repeat((4 - (b64.length % 4)) % 4);
+  return JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(padded), (c) => c.charCodeAt(0))));
+};
 
 // Remove white/light background from signature image, preserving anti-aliased edges
 function removeWhiteBackground(dataUrl) {
@@ -62,17 +70,21 @@ function SignPageContent() {
   }, []);
 
   const [data, setData] = useState(null);
+  const [token, setToken] = useState(null);
   const [expired, setExpired] = useState(false);
   const [error, setError] = useState(false);
   const [signatures, setSignatures] = useState([]);
   const [submitting, setSubmitting] = useState(false);
+  const [consentPdpa, setConsentPdpa] = useState(false);
+  const [consentInfo, setConsentInfo] = useState(false);
 
   useEffect(() => {
     if (!encoded) { setError(true); return; }
     try {
-      const json = decodeBase64(decodeURIComponent(encoded));
-      const parsed = JSON.parse(json);
+      const parsed = decodeToken(encoded);
+      if (!parsed) { setError(true); return; }
       if (Date.now() > parsed.x) { setExpired(true); return; }
+      setToken(encoded);
       setData(parsed);
     } catch { setError(true); }
   }, [encoded]);
@@ -91,13 +103,8 @@ function SignPageContent() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          templateId: data.t,
-          blobUrl: data.blobUrl,
-          formData: data.f || {},
+          token,
           signatures: processed,
-          emails: data.e || '',
-          sigBoxes: data.sb || null,
-          fileName: data.fn || '',
         }),
       });
       if (res.ok) {
@@ -110,7 +117,7 @@ function SignPageContent() {
       } else alert('Error generating PDF.');
     } catch { alert('Network error.'); }
     finally { setSubmitting(false); }
-  }, [data, signatures, lang, router]);
+  }, [token, signatures, lang, router]);
 
   if (error) return <ErrorView />;
   if (expired) return <ExpiredView lang={lang} />;
@@ -150,16 +157,16 @@ function SignPageContent() {
 
         <div className="mt-6 space-y-3">
           <label className="checkbox-wrap">
-            <input type="checkbox" id="pdpa-consent" required />
+            <input type="checkbox" id="pdpa-consent" checked={consentPdpa} onChange={(e) => setConsentPdpa(e.target.checked)} />
             <span className="checkbox-label">{t(lang, 'pdpaConsent')}</span>
           </label>
           <label className="checkbox-wrap">
-            <input type="checkbox" required />
+            <input type="checkbox" checked={consentInfo} onChange={(e) => setConsentInfo(e.target.checked)} />
             <span className="checkbox-label">{t(lang, 'confirmInfo')}</span>
           </label>
         </div>
 
-        <button onClick={handleSubmit} disabled={submitting} className="btn-primary mt-6">
+        <button onClick={handleSubmit} disabled={submitting || !consentPdpa || !consentInfo} className="btn-primary mt-6">
           {submitting ? (
             <><div className="spinner" /> Processing...</>
           ) : (

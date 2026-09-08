@@ -7,7 +7,6 @@ import LanguageSwitcher from '@/components/LanguageSwitcher';
 import TemplateSelector from '@/components/TemplateSelector';
 
 const SEVEN_DAYS = 7 * 24 * 60 * 60 * 1000;
-const encodeBase64 = (s) => btoa(String.fromCharCode(...new TextEncoder().encode(s)));
 const STATE_KEY = 'cgsi-home-state';
 
 export default function HomePage() {
@@ -99,7 +98,7 @@ export default function HomePage() {
     setUploading(false);
   }, [templateId, sigBoxes]);
 
-  const generateLink = useCallback(() => {
+  const generateLink = useCallback(async () => {
     if (!uploaded) return;
     const recipients = recipientEmails.trim();
     const effectiveSigCount = sigBoxes ? sigBoxes.length : uploaded.sigCount;
@@ -112,11 +111,21 @@ export default function HomePage() {
     };
     if (recipients) payload.e = recipients;
     if (sigBoxes) payload.sb = sigBoxes;
-    const base64 = encodeBase64(JSON.stringify(payload));
-    setLink(`${window.location.origin}/sign?d=${encodeURIComponent(base64)}`);
-    // Sig boxes are embedded in the link — clear from localStorage for next customer
-    localStorage.removeItem(`cgsi-sig-boxes-${templateId}`);
-    setSigBoxes(null);
+    try {
+      const res = await fetch('/api/create-sign-link', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ payload }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to create sign link');
+      setLink(`${window.location.origin}/sign?d=${encodeURIComponent(data.token)}`);
+      // Sig boxes are embedded in the link — clear from localStorage for next customer
+      localStorage.removeItem(`cgsi-sig-boxes-${templateId}`);
+      setSigBoxes(null);
+    } catch (err) {
+      alert('Failed to generate link: ' + err.message);
+    }
   }, [templateId, uploaded, recipientEmails, sigBoxes]);
 
   const copyLink = useCallback(() => {
@@ -183,11 +192,20 @@ export default function HomePage() {
                   />
                 </div>
                 <button
-                  onClick={() => {
+                  onClick={async () => {
                     if (!onboardEmail) return;
-                    const payload = btoa(JSON.stringify({ e: onboardEmail }));
-                    const link = `${window.location.origin}/onboard?d=${encodeURIComponent(payload)}`;
-                    setOnboardLink(link);
+                    try {
+                      const res = await fetch('/api/create-sign-link', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ payload: { e: onboardEmail } }),
+                      });
+                      const data = await res.json();
+                      if (!res.ok) throw new Error(data.error || 'Failed to create link');
+                      setOnboardLink(`${window.location.origin}/onboard?d=${encodeURIComponent(data.token)}`);
+                    } catch (err) {
+                      alert('Failed to generate onboarding link: ' + err.message);
+                    }
                   }}
                   style={{
                     padding: '9px 18px', borderRadius: 6, border: 'none',

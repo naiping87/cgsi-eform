@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
 import { sendPDFByEmail } from '@/lib/mailer';
 import { detectFormat, imageToGrayscale } from '@/lib/image-utils';
+import { verifyData } from '@/lib/auth';
 
 /**
  * Convert image buffer to grayscale by iterating pixels.
@@ -60,7 +61,13 @@ async function mergeICFrontBack(frontBuf, backBuf, frontFormat, backFormat) {
 export async function POST(request) {
   try {
     const body = await request.json();
-    const { formData, fileUrls, dealerEmail } = body;
+    const { formData, fileUrls, token } = body;
+
+    // Only trust the recipient from a server-signed link, so a client cannot send
+    // onboarding emails to arbitrary addresses.
+    const signed = await verifyData(token);
+    if (!signed) return NextResponse.json({ error: 'Invalid onboarding link' }, { status: 401 });
+    const dealerEmail = signed.e || '';
 
     // ===== Generate info sheet PDF =====
     const infoDoc = await PDFDocument.create();
@@ -69,11 +76,39 @@ export async function POST(request) {
     const pw = page.getWidth();
     let y = page.getHeight() - 50;
 
+    // Wrap a value into physical lines (explicit \n + greedy word-wrap to maxWidth),
+    // so multi-line values get content-driven height instead of overlapping the next row.
+    function wrapLines(text, size, maxWidth) {
+      const lines = [];
+      for (const rawLine of String(text).split('\n')) {
+        const words = rawLine.split(/\s+/).filter(Boolean);
+        let cur = '';
+        for (const word of words) {
+          const cand = cur ? cur + ' ' + word : word;
+          if (!cur || font.widthOfTextAtSize(cand, size) <= maxWidth) cur = cand;
+          else { lines.push(cur); cur = word; }
+        }
+        if (cur) lines.push(cur);
+      }
+      return lines;
+    }
+
     function wl(label, value, bold) {
-      if (y < 60) { page = infoDoc.addPage([595, 842]); y = page.getHeight() - 50; }
+      const size = 10;
+      const maxWidth = 350;
+      const lineHeight = 14;                 // ~1.4x body size — adequate, non-cramped line height
+      const lines = wrapLines(value || '—', size, maxWidth);
+      if (lines.length === 0) lines.push('—');
+      const extraH = (lines.length - 1) * lineHeight;
+
+      if (y - extraH < 60) { page = infoDoc.addPage([595, 842]); y = page.getHeight() - 50; }
       page.drawText(label + ':', { x: 40, y, size: bold ? 11 : 9, font, color: bold ? rgb(0, 0, 0) : rgb(0.3, 0.3, 0.3) });
-      page.drawText(value || '—', { x: 200, y, size: 10, font, color: rgb(0, 0, 0), maxWidth: 350 });
-      y -= bold ? 24 : 18;
+      let ty = y;
+      for (const line of lines) {
+        page.drawText(line, { x: 200, y: ty, size, font, color: rgb(0, 0, 0) });
+        ty -= lineHeight;
+      }
+      y -= extraH + (bold ? 24 : 18);        // preserve original row gap, add wrapped-line height
     }
     function sec(title) {
       if (y < 80) { page = infoDoc.addPage([595, 842]); y = page.getHeight() - 50; }

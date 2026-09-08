@@ -41,8 +41,8 @@ export default function OnboardPageWrapper() {
 function OnboardContent() {
   const searchParams = useSearchParams();
   const encodedPayload = searchParams.get('d') || '';
-  let payload = {};
-  try { if (encodedPayload) payload = JSON.parse(atob(decodeURIComponent(encodedPayload))); } catch {}
+  // `d` is a server-signed token; the full token is sent back so the server can
+  // verify the trusted recipient email rather than accepting it from the client.
 
   const [lang, setLang] = useState('en');
   const [step, setStep] = useState(0);
@@ -74,7 +74,7 @@ function OnboardContent() {
       const res = await fetch('/api/submit-onboarding', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ formData, fileUrls, dealerEmail: payload.e }),
+        body: JSON.stringify({ formData, fileUrls, token: encodedPayload }),
       });
       const text = await res.text();
       let data;
