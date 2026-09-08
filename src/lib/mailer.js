@@ -16,7 +16,7 @@ function createTransporter(host, port, secure, user, pass) {
   });
 }
 
-export async function sendPDFByEmail(pdfBuffer, filename, recipients) {
+export async function sendPDFByEmail(pdfBuffer, filename, recipients, extraAttachments = []) {
   const user = process.env.SMTP_USER;
   const pass = process.env.SMTP_PASS;
   const to = recipients || process.env.TO_EMAIL;
@@ -46,11 +46,18 @@ export async function sendPDFByEmail(pdfBuffer, filename, recipients) {
         to,
         subject: `Signed Form: ${filename}`,
         text: `A client has signed the form.\n\nForm: ${filename}\n\nPlease find the signed PDF attached.`,
-        attachments: [{
-          filename,
-          content: pdfBuffer,
-          contentType: 'application/pdf',
-        }],
+        attachments: [
+          {
+            filename,
+            content: pdfBuffer,
+            contentType: 'application/pdf',
+          },
+          ...extraAttachments.map((a) => ({
+            filename: a.filename,
+            content: a.buffer,
+            contentType: a.contentType || 'application/pdf',
+          })),
+        ],
       });
       transporter.close();
       return info;

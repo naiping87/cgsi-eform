@@ -7,6 +7,11 @@ export default function FileUploader({ label, accept = 'image/*,.pdf', maxSizeMB
   const [error, setError] = useState(null);
   const inputRef = useRef(null);
 
+  const isPdfFile = (file) =>
+    file.type === 'application/pdf' ||
+    ['application/x-pdf', 'application/acrobat', 'text/pdf', 'application/octet-stream'].includes(file.type) ||
+    /\.pdf$/i.test(file.name || '');
+
   const labels = {
     en: { tap: 'Tap to take photo', or: 'or choose from gallery', tooLarge: 'File too large (max 10MB)', invalid: 'Invalid file type', pdf: 'PDF' },
     zh: { tap: '点击拍照', or: '或从相册选择', tooLarge: '文件过大（上限10MB）', invalid: '无效文件格式', pdf: 'PDF' },
@@ -22,7 +27,7 @@ export default function FileUploader({ label, accept = 'image/*,.pdf', maxSizeMB
       const reader = new FileReader();
       reader.onload = (e) => setPreview(e.target.result);
       reader.readAsDataURL(file);
-    } else if (file.type === 'application/pdf') {
+    } else if (isPdfFile(file)) {
       setPreview('pdf');
     } else { setError(t.invalid); return; }
     onFile?.(file);
@@ -69,7 +74,7 @@ export default function FileUploader({ label, accept = 'image/*,.pdf', maxSizeMB
             </div>
           </>
         )}
-        <input ref={inputRef} type="file" accept={accept} onChange={(e) => handleFile(e.target.files[0])} style={{ display: 'none' }} />
+        <input ref={inputRef} type="file" accept={accept} onChange={(e) => { handleFile(e.target.files[0]); e.target.value = ''; }} style={{ display: 'none' }} />
       </div>
       {error && <p style={styles.error}>{error}</p>}
       {hint && <p style={{ fontSize: 12, color: 'var(--accent)', marginTop: 6, fontWeight: 500 }}>{hint}</p>}

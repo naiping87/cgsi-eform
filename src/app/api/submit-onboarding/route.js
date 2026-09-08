@@ -61,7 +61,7 @@ async function mergeICFrontBack(frontBuf, backBuf, frontFormat, backFormat) {
 export async function POST(request) {
   try {
     const body = await request.json();
-    const { formData, fileUrls, token } = body;
+    const { formData, fileUrls, fileNames, token } = body;
 
     // Only trust the recipient from a server-signed link, so a client cannot send
     // onboarding emails to arbitrary addresses.
@@ -143,6 +143,7 @@ export async function POST(request) {
 
     // ===== Fetch files and build merge items =====
     const mergeItems = [{ buffer: infoBuf, type: 'pdf' }];
+    const extraAttachments = [];
     let icFrontBuf = null, icBackBuf = null, icFrontFmt = null, icBackFmt = null;
 
     for (const [key, url] of Object.entries(fileUrls || {})) {
@@ -162,7 +163,19 @@ export async function POST(request) {
           icBackBuf = gray ? gray.buffer : buf;
           icBackFmt = 'jpeg';
         }
-        else if (fmt === 'pdf') { mergeItems.push({ buffer: buf, type: 'pdf' }); }
+        else if (fmt === 'pdf') {
+          try {
+            // Prefer a fast page copy for normal PDFs.
+            await PDFDocument.load(buf);
+            mergeItems.push({ buffer: buf, type: 'pdf' });
+          } catch {
+            // Encrypted/sensitive PDFs (e.g. bank or EPF statements) cannot be
+            // safely rewritten by pdf-lib. Keep the original as a separate
+            // attachment so the dealer receives a readable copy.
+            const originalName = (fileNames?.[key] || `${key}.pdf`).replace(/[\\/:*?"<>|]/g, '_');
+            extraAttachments.push({ buffer: buf, filename: `${key}_${originalName}`, contentType: 'application/pdf' });
+          }
+        }
         else if (fmt === 'png' || fmt === 'jpeg') { mergeItems.push({ buffer: buf, type: 'image', format: fmt }); }
       } catch (e) { console.warn(`Process ${key}:`, e.message); }
     }
@@ -185,7 +198,7 @@ export async function POST(request) {
     if (recipient) {
       const name = (formData?.fullName || 'Customer').replace(/[<>:"/\\|?*]/g, '').trim();
       try {
-        await sendPDFByEmail(mergedPdf, `onboarding_${name.replace(/\s+/g, '_')}.pdf`, recipient);
+        await sendPDFByEmail(mergedPdf, `onboarding_${name.replace(/\s+/g, '_')}.pdf`, recipient, extraAttachments);
         emailResult = { success: true };
       } catch (e) { emailResult = { success: false, error: e.message }; }
     }

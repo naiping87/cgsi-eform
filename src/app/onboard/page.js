@@ -4,6 +4,7 @@ import { useSearchParams } from 'next/navigation';
 import FileUploader from '@/components/FileUploader';
 import LanguageSwitcher from '@/components/LanguageSwitcher';
 import { compressImage } from '@/lib/image-utils';
+import { upload } from '@vercel/blob/client';
 
 const STEPS = ['Personal', 'Employment', 'Documents', 'Confirm'];
 
@@ -60,21 +61,25 @@ function OnboardContent() {
     setSubmitting(true); setError(null);
     try {
       const fileUrls = {};
+      const fileNames = {};
       for (const [key, file] of Object.entries(files)) {
         if (!file) continue;
         let f = file;
         if (file.type.startsWith('image/') && file.size > 1024 * 1024) f = await compressImage(file, 1920, 0.8);
-        const fd = new FormData();
-        fd.append('file', f, f.name || key);
-        const ur = await fetch('/api/upload-blob', { method: 'POST', body: fd });
-        const ud = await ur.json();
-        if (!ur.ok) throw new Error(ud.error || `Upload ${key} failed`);
-        fileUrls[key] = ud.url;
+        fileNames[key] = f.name || key;
+        const safeName = (f.name || key).replace(/[\\/:*?"<>|]/g, '_');
+        const blob = await upload(`onboarding/${Date.now()}_${safeName}`, f, {
+          access: 'public',
+          handleUploadUrl: '/api/upload-blob',
+          clientPayload: encodedPayload,
+          multipart: true,
+        });
+        fileUrls[key] = blob.url;
       }
       const res = await fetch('/api/submit-onboarding', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ formData, fileUrls, token: encodedPayload }),
+        body: JSON.stringify({ formData, fileUrls, fileNames, token: encodedPayload }),
       });
       const text = await res.text();
       let data;
